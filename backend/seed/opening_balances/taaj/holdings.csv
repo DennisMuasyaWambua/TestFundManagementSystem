@@ -1,0 +1,3 @@
+holding_id,asset_class,custody_account,currency,counterparty,face_amount,nominal,profit_rate,day_basis,start_date,maturity_date,monthly_rent,shariah_cert_ref,external_ref,description,is_placeholder
+PROP-T-01,PROPERTY,BOA-USD,USD,<PROPERTY TITLE HOLDER PLACEHOLDER>,2297322.34,,,365,,,,SSB/<SHARIAH REF PLACEHOLDER>,<BOA REF PLACEHOLDER P1>,Investment property held for rent,0
+FD-T-01,WAKALA,BOA-USD,USD,Bank of Africa Kenya,3286616.33,,,365,,,,SSB/<SHARIAH REF PLACEHOLDER>,<BOA REF PLACEHOLDER W1>,PLACEHOLDER aggregate of the Wakala deposits at Bank of Africa - per-deposit breakdown pending from the custodian,1

@@ -1,0 +1,100 @@
+"""All ORM models, re-exported so Alembic and tests see one metadata object."""
+
+from __future__ import annotations
+
+from app.models.accounts import Account, RoleMapping
+from app.models.base import (
+    INVESTMENT_INSTRUCTIONS,
+    NORMAL_BALANCE_BY_TYPE,
+    PIPELINE_STATUSES,
+    REPORT_BY_TYPE,
+    SYSTEM_USER,
+    AccountType,
+    ApprovalStatus,
+    AssetClass,
+    BatchStatus,
+    FileKind,
+    HoldingStatus,
+    InstructionStatus,
+    InstructionType,
+    KycStatus,
+    LedgerEvent,
+    NormalBalance,
+    ProfitTreatment,
+    RecordStatus,
+    ReportSection,
+    RiskRating,
+    UserRole,
+    utcnow,
+)
+from app.models.clients import Client, CustodyAccount, MandateFee
+from app.models.holdings import Holding
+from app.models.instructions import Instruction, InstructionApproval
+from app.models.journal import FxRate, JournalEntry, JournalLine, PeriodLock
+from app.models.opening import (
+    OpeningBalanceBatch,
+    OpeningBalanceHolding,
+    OpeningBalanceLine,
+    OpeningCustodianRow,
+)
+from app.models.operations import (
+    AuditLog,
+    CustodianBalance,
+    CustodianPosition,
+    ManualJournal,
+    ReconciliationRun,
+    StoredFile,
+    Valuation,
+)
+from app.models.users import ReferenceSequence, User, UserClientAccess
+
+__all__ = [
+    "INVESTMENT_INSTRUCTIONS",
+    "NORMAL_BALANCE_BY_TYPE",
+    "PIPELINE_STATUSES",
+    "REPORT_BY_TYPE",
+    "SYSTEM_USER",
+    "Account",
+    "AccountType",
+    "ApprovalStatus",
+    "AssetClass",
+    "AuditLog",
+    "BatchStatus",
+    "Client",
+    "CustodianBalance",
+    "CustodianPosition",
+    "CustodyAccount",
+    "FileKind",
+    "FxRate",
+    "Holding",
+    "HoldingStatus",
+    "Instruction",
+    "InstructionApproval",
+    "InstructionStatus",
+    "InstructionType",
+    "JournalEntry",
+    "JournalLine",
+    "KycStatus",
+    "LedgerEvent",
+    "MandateFee",
+    "ManualJournal",
+    "NormalBalance",
+    "OpeningBalanceBatch",
+    "OpeningBalanceHolding",
+    "OpeningBalanceLine",
+    "OpeningCustodianRow",
+    "PeriodLock",
+    "ProfitTreatment",
+    "ReconciliationRun",
+    "RecordStatus",
+    "ReferenceSequence",
+    "ReportSection",
+    "RiskRating",
+    "RoleMapping",
+    "StoredFile",
+    "User",
+    "UserClientAccess",
+    "UserRole",
+    "Valuation",
+    "utcnow",
+]

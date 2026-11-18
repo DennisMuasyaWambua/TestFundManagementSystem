@@ -1,0 +1,11 @@
+account_code,holding_id,currency,debit,credit,description
+1260,PROP-T-01,USD,2297322.34,,Investment property at cost
+1210,FD-T-01,USD,3286616.33,,Wakala deposits at Bank of Africa (aggregate pending breakdown)
+1320,,USD,1400509.69,,Receivables (open decision 5: classified to Accounts Receivable)
+1120,,USD,24173.34,,Bank balance
+1390,,USD,516745.92,,Unreconciled at cutover - under finance review
+2310,,USD,,27168.72,Payables
+2120,,USD,,7013618.49,Initial investment
+2220,,USD,,410275.76,Profit brought forward
+2220,,USD,,163764.65,Current year profit to date
+2220,,USD,89460.00,,Profit paid to date

@@ -1,0 +1,15 @@
+account_code,holding_id,currency,debit,credit,description
+1220,FD-R-01,USD,132216.43,,Wakala deposit FD-R-01
+1220,FD-R-02,USD,341784.55,,Wakala deposit FD-R-02
+1220,FD-R-03,USD,1000000.00,,Wakala deposit FD-R-03
+1220,FD-R-04,USD,1000000.00,,Wakala deposit FD-R-04
+1220,FD-R-05,USD,1000000.00,,Wakala deposit FD-R-05
+1220,FD-R-06,USD,1000000.00,,Wakala deposit FD-R-06
+1220,FD-R-07,USD,1000000.00,,Wakala deposit FD-R-07
+1310,,USD,16408.80,,Accrued profit to cutover (total supplied; per-deposit split pending)
+1140,,USD,10710.53,,Bank balance
+2310,,USD,,10453.08,Payables
+2110,,USD,,5000000.00,Initial investment
+2210,,USD,,411680.53,Profit brought forward
+2210,,USD,,196927.56,Current year profit to date
+2210,,USD,117940.86,,Profit paid to date

@@ -1,0 +1,71 @@
+Code,Account,Type,Sub-ledger,Currency,Status
+1000,ASSETS,ASSET,,,ACTIVE
+1100,Client Cash at Custodians,ASSET,,,ACTIVE
+1110,Cash at Bank of Africa Kenya - KES Custody,ASSET,,KES,ACTIVE
+1120,Cash at Bank of Africa Kenya - USD Custody,ASSET,,USD,ACTIVE
+1130,Cash at Absa Bank Kenya PLC - KES Custody,ASSET,,KES,ACTIVE
+1140,Cash at Absa Bank Kenya PLC - USD Custody,ASSET,,USD,ACTIVE
+1150,Client Cash at Custodian - Account 5 (unassigned),ASSET,,,ACTIVE
+1160,Client Cash at Custodian - Account 6 (unassigned),ASSET,,,ACTIVE
+1200,Client Investments,ASSET,,,ACTIVE
+1210,Wakala Deposits - Bank of Africa Kenya,ASSET,HOLDING,,ACTIVE
+1220,Wakala Deposits - Absa Bank Kenya PLC,ASSET,HOLDING,,ACTIVE
+1230,Sukuk - at Cost,ASSET,HOLDING,,ACTIVE
+1231,Sukuk - Fair Value Adjustment,ASSET,HOLDING,,PROPOSED
+1240,Commodity Murabaha Placements,ASSET,HOLDING,,ACTIVE
+1250,Private Financing - Principal Outstanding,ASSET,HOLDING,,ACTIVE
+1260,Investment Property - at Cost,ASSET,HOLDING,,ACTIVE
+1261,Investment Property - Fair Value Adjustment,ASSET,HOLDING,,PROPOSED
+1300,Client Receivables,ASSET,,,ACTIVE
+1310,Accrued Profit Receivable,ASSET,HOLDING,,ACTIVE
+1320,Accounts Receivable,ASSET,,,ACTIVE
+1330,Rent Receivable,ASSET,HOLDING,,ACTIVE
+1390,Suspense - Unreconciled Items,ASSET,,,ACTIVE
+2000,LIABILITIES,LIABILITY,,,ACTIVE
+2100,Client Capital,LIABILITY,,,ACTIVE
+2110,Client Capital - Rayan Realstate Development Sarl,LIABILITY,,,ACTIVE
+2120,Client Capital - Taaj Financial Services,LIABILITY,,,ACTIVE
+2130,Client Capital - Mandate 3 (unassigned),LIABILITY,,,ACTIVE
+2140,Client Capital - Mandate 4 (unassigned),LIABILITY,,,ACTIVE
+2200,Profit Attributable to Clients,LIABILITY,,,ACTIVE
+2210,Client Profit - Rayan Realstate Development Sarl,LIABILITY,,,ACTIVE
+2220,Client Profit - Taaj Financial Services,LIABILITY,,,ACTIVE
+2230,Client Profit - Mandate 3 (unassigned),LIABILITY,,,ACTIVE
+2240,Client Profit - Mandate 4 (unassigned),LIABILITY,,,ACTIVE
+2300,Other Liabilities,LIABILITY,,,ACTIVE
+2310,Accounts Payable,LIABILITY,,,ACTIVE
+2320,Management Fee Payable,LIABILITY,,,ACTIVE
+2330,Custody Fee Payable,LIABILITY,,,ACTIVE
+2340,Accrued Expenses,LIABILITY,,,ACTIVE
+2350,Other Payables,LIABILITY,,,ACTIVE
+2360,Withholding Tax Payable - Final,LIABILITY,,,ACTIVE
+2370,Tenant Rent Deposits Held,LIABILITY,,,ACTIVE
+3000,EQUITY,EQUITY,,,ACTIVE
+3100,Shareholders Funds,EQUITY,,,ACTIVE
+3110,Share Capital,EQUITY,,,ACTIVE
+3120,Retained Earnings,EQUITY,,,ACTIVE
+3130,Current Year Result,EQUITY,,,ACTIVE
+4000,INCOME,INCOME,,,ACTIVE
+4100,Investment Income,INCOME,,,ACTIVE
+4110,Wakala Profit Income,INCOME,,,ACTIVE
+4120,Private Financing Profit Income,INCOME,,,ACTIVE
+4130,Rental Income,INCOME,,,ACTIVE
+4140,Sukuk Profit Income,INCOME,,,ACTIVE
+4200,Other Gains,INCOME,,,ACTIVE
+4210,Foreign Exchange Gains,INCOME,,,ACTIVE
+4220,Other Income,INCOME,,,ACTIVE
+4230,Fair Value Gains on Investments,INCOME,,,PROPOSED
+5000,EXPENSES,EXPENSE,,,ACTIVE
+5100,Management Fees Charged to Clients,EXPENSE,,,ACTIVE
+5110,Management Fee - Wakala,EXPENSE,,,ACTIVE
+5120,Management Fee - Private Financing,EXPENSE,,,ACTIVE
+5130,Management Fee - Rental,EXPENSE,,,ACTIVE
+5140,Management Fee - Sukuk,EXPENSE,,,ACTIVE
+5200,Taxes and Custody Costs,EXPENSE,,,ACTIVE
+5210,Withholding Tax at Source,EXPENSE,,,ACTIVE
+5220,Bank Charges,EXPENSE,,,ACTIVE
+5230,Custody Fees,EXPENSE,,,ACTIVE
+5300,Other Losses,EXPENSE,,,ACTIVE
+5320,Foreign Exchange Losses,EXPENSE,,,ACTIVE
+5340,Private Financing Write-offs,EXPENSE,,,ACTIVE
+5350,Fair Value Losses on Investments,EXPENSE,,,PROPOSED

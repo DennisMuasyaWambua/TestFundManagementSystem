@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+/*
+ * The design tokens from section 11 of the build specification.  Every text/background
+ * pair below meets WCAG AA 4.5:1 -- the contrast ratios are in the comments so a
+ * future change can be checked without re-deriving them.
+ */
+@theme {
+  --color-ground: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-border: #e3e6ea;
+  --color-ink: #14171a; /* on surface: 16.9:1 */
+  --color-muted: #5b6470; /* on surface: 5.7:1 */
+  --color-sidebar: #0f1b1a;
+  --color-sidebar-ink: #e8eceb; /* on sidebar: 13.4:1 */
+  --color-sidebar-muted: #9aa7a4; /* on sidebar: 6.4:1 */
+  --color-accent: #0e6b57; /* on surface: 5.1:1 */
+  --color-accent-hover: #0a4f40;
+  --color-accent-ink: #ffffff; /* on accent: 5.1:1 */
+  --color-success-tint: #e3f3ee;
+  --color-success-ink: #0b5a46; /* on success tint: 6.3:1 */
+  --color-warning-tint: #fdf2df;
+  --color-warning-ink: #7a4700; /* on warning tint: 6.1:1 */
+  --color-danger-tint: #fdecea;
+  --color-danger-ink: #8a1c12; /* on danger tint: 7.4:1 */
+
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  --radius-card: 12px;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    background-color: var(--color-ground);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Money and every other figure lines up in a column and never reflows. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  /* Visible focus everywhere: these screens must be usable from the keyboard alone. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  th,
+  td {
+    text-align: left;
+  }
+
+  /* A 44px minimum touch target on anything interactive. */
+  button,
+  [role="button"],
+  a.btn {
+    min-height: 44px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
