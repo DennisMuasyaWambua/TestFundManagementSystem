@@ -13,36 +13,21 @@ import { formatMoney } from "@/lib/money";
 /**
  * Approving or rejecting a staged migration.
  *
- * Approval is the moment the opening entry is posted, the holdings are created, the
- * custodian figures are reconciled and the period is locked -- all in one
- * transaction. The approver cannot be the preparer, and the API enforces that, so
- * this screen states it plainly rather than trying to hide the buttons.
+ * Approval is the moment the opening entry is posted, the holdings are created and
+ * the custodian figures are reconciled -- all in one transaction.
  */
 export function BatchDecision({
   batch,
   preview,
-  isPreparer,
 }: {
   batch: BatchRow;
   preview: PreviewBody | null;
-  isPreparer: boolean;
 }) {
   const router = useRouter();
   const [dialog, setDialog] = useState<"approve" | "reject" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (batch.status !== "SUBMITTED") return null;
-
-  if (isPreparer) {
-    return (
-      <Card title="Waiting for someone else to approve">
-        <p className="text-sm text-muted">
-          You prepared this batch, so you cannot approve it. A finance head or an
-          authorised signatory has to review and approve it before anything is posted.
-        </p>
-      </Card>
-    );
-  }
 
   const summary = (
     <dl className="space-y-1">
@@ -66,9 +51,7 @@ export function BatchDecision({
 
       <p className="mb-4 text-sm text-muted">
         Approving posts the opening entry dated {batch.cutover_date}, creates the
-        holdings, records the custodian&rsquo;s figures, runs the reconciliation and locks
-        the period through that date. After that it can only be undone by a reversal
-        batch, approved the same way.
+        holdings, records the custodian&rsquo;s figures and runs the reconciliation.
       </p>
 
       <div className="flex flex-wrap gap-2">
@@ -87,8 +70,7 @@ export function BatchDecision({
         summary={
           <>
             <p className="mb-2 font-medium">
-              This posts to the ledger and locks the period. It is not reversible by
-              editing.
+              This posts to the ledger. It is not reversible by editing.
             </p>
             {summary}
             {preview && !preview.reconciles && (

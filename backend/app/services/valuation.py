@@ -1,8 +1,11 @@
-"""Fair valuation of Sukuk and investment property, maker-checker.
+"""Fair valuation of Sukuk and investment property.
 
 Cost is never overwritten.  A valuation posts the difference to a fair value
 adjustment account so that cost + adjustment = fair value, which keeps the original
 cost visible for ever and makes the gain or loss explicit in the P&L.
+
+This test system does not require the approver to be someone other than whoever
+proposed the valuation.
 """
 
 from __future__ import annotations
@@ -13,7 +16,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.errors import BusinessRule, Conflict, MakerCheckerBreach, NotFound
+from app.errors import BusinessRule, Conflict, NotFound
 from app.ledger.posting import PostingContext, build_lines, post
 from app.ledger.rules import event_for
 from app.models import (
@@ -171,12 +174,6 @@ def approve(db: Session, valuation_id: int, *, approver_id: str) -> Valuation:
             f"valuation {valuation_id} is already {valuation.status}",
             status=str(valuation.status),
         )
-    if valuation.prepared_by == approver_id:
-        raise MakerCheckerBreach(
-            "the person who proposed a valuation cannot approve it",
-            valuation_id=valuation_id,
-        )
-
     holding = holdings_svc.get_holding(db, valuation.holding_id)
     entry = revalue_to(
         db,
@@ -218,11 +215,6 @@ def reject(db: Session, valuation_id: int, *, approver_id: str, reason: str) -> 
         raise Conflict(
             f"valuation {valuation_id} is already {valuation.status}",
             status=str(valuation.status),
-        )
-    if valuation.prepared_by == approver_id:
-        raise MakerCheckerBreach(
-            "the person who proposed a valuation cannot reject it",
-            valuation_id=valuation_id,
         )
     if not reason.strip():
         raise BusinessRule("a rejection needs a reason")

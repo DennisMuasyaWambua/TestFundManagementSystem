@@ -191,7 +191,10 @@ def test_maker_cannot_approve_and_a_signatory_cannot_sign_twice(seeded: Session)
     assert instruction.letter_pdf_sha256 is not None
 
 
-def test_a_signatory_who_is_the_maker_cannot_approve(seeded: Session) -> None:
+def test_a_signatory_who_is_the_maker_can_approve_their_own(seeded: Session) -> None:
+    """This test system does not restrict a signatory from approving a
+    deal they themselves prepared -- see opening_balances/closing/
+    instructions for where that was deliberately relaxed."""
     funded(seeded)
     instruction = ins.create(
         seeded,
@@ -203,8 +206,9 @@ def test_a_signatory_who_is_the_maker_cannot_approve(seeded: Session) -> None:
         maker_id="sig.one",
         params=WAKALA_PARAMS,
     )
-    with pytest.raises(MakerCheckerBreach, match="prepared"):
-        ins.approve(seeded, instruction.id, approver=user(seeded, "sig.one"))
+    ins.approve(seeded, instruction.id, approver=user(seeded, "sig.one"))
+    seeded.refresh(instruction)
+    assert len(instruction.approvals) == 1
 
 
 def test_sending_needs_two_approvals_and_a_scan(seeded: Session) -> None:

@@ -14,29 +14,14 @@ import { formatMoney } from "@/lib/money";
  * Approving or rejecting a proposed valuation.
  *
  * Approval is what posts the fair value adjustment -- cost is never overwritten, so
- * the original amount paid stays visible alongside the adjustment. The proposer
- * cannot approve their own valuation, and the API enforces it.
+ * the original amount paid stays visible alongside the adjustment.
  */
-export function ValuationDecision({
-  valuation,
-  isProposer,
-}: {
-  valuation: ValuationRow;
-  isProposer: boolean;
-}) {
+export function ValuationDecision({ valuation }: { valuation: ValuationRow }) {
   const router = useRouter();
   const [dialog, setDialog] = useState<"approve" | "reject" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (valuation.status !== "PENDING") return null;
-
-  if (isProposer) {
-    return (
-      <p className="text-xs text-muted">
-        You proposed this, so someone else has to approve it.
-      </p>
-    );
-  }
 
   const summary = (
     <dl className="space-y-1">

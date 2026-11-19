@@ -13,9 +13,8 @@ import type { AssetClass } from "@/lib/api/schema";
  * Proposing a valuation.
  *
  * A Sukuk is quoted as a price per 100 of nominal; property is valued as an amount by
- * a named valuer against a report reference. Either way the proposer cannot approve
- * it: a different finance or signatory user has to, and only then is the fair value
- * adjustment posted.
+ * a named valuer against a report reference. Either way, a finance or signatory user
+ * still has to approve it before the fair value adjustment is posted.
  */
 export function ProposeValuation({
   holdingId,

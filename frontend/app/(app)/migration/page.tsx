@@ -114,8 +114,8 @@ export default async function MigrationPage() {
             ["Draft", "Finance creates the batch and uploads the four CSVs. Rows are staged."],
             ["Validated", "Every check in the specification runs. Errors block; warnings must be acknowledged in writing."],
             ["Submitted", "The preparer submits, having seen the journal and the statement as they will be."],
-            ["Approved", "A different person — finance head or signatory — approves. The preparer never can."],
-            ["Posted", "One opening entry dated the cutover, holdings created, the reconciliation run, and the period locked."],
+            ["Approved", "Finance head or signatory approves."],
+            ["Posted", "One opening entry dated the cutover, holdings created, and the reconciliation run."],
           ].map(([state, text], index) => (
             <li key={state} className="flex gap-3">
               <span className="tnum shrink-0 font-medium text-ink">{index + 1}.</span>

@@ -1,8 +1,12 @@
 """Month-end close.
 
 The order matters and is fixed: accrue, revalue, check the reconciliation, move the
-period's result to the client, lock the period.  Everything happens in one transaction
-per client, so a close either completes or leaves the books exactly as they were.
+period's result to the client.  Everything happens in one transaction per client, so
+a close either completes or leaves the books exactly as they were.
+
+This test system does not lock the period afterwards -- see the module's lack of any
+PeriodLock write below -- so a back-dated posting after close remains possible and a
+repeated close simply re-sweeps (posting nothing further, since nothing changed).
 """
 
 from __future__ import annotations
@@ -239,13 +243,6 @@ def close(
     # 4. move the period's result to the client
     entry, net_profit = _post_close_entry(db, client, period_end=period_end, created_by=created_by)
 
-    # 5. lock the period
-    existing = db.get(PeriodLock, client_id)
-    if existing is None:
-        db.add(PeriodLock(client_id=client_id, locked_through=period_end, locked_by=created_by))
-    else:
-        existing.locked_through = period_end
-        existing.locked_by = created_by
     db.flush()
 
     audit.record(

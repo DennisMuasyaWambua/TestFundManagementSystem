@@ -99,10 +99,7 @@ export default async function ValuationsPage() {
                     <td className="px-3 py-3 text-muted">{valuation.prepared_by}</td>
                     <td className="px-5 py-3">
                       {can(me, PERMISSION.valuationApprove) ? (
-                        <ValuationDecision
-                          valuation={valuation}
-                          isProposer={valuation.prepared_by === me.id}
-                        />
+                        <ValuationDecision valuation={valuation} />
                       ) : (
                         <StatusPill state="PENDING" />
                       )}

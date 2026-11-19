@@ -1,12 +1,12 @@
 """Opening balance migration.
 
 Each client's position as at close of business on the cutover date is loaded once, as
-a maker-checker batch.  Rows are staged, validated, previewed and only then posted;
-nothing touches the ledger until the batch reaches POSTED.  Posting also sets the
-client's period lock to the cutover date, so no later entry can be back-dated into the
-migrated period.
+a batch.  Rows are staged, validated, previewed and only then posted; nothing touches
+the ledger until the batch reaches POSTED.
 
-A posted batch can only be undone by a reversal batch approved the same way.
+A posted batch can only be undone by a reversal batch.  This test system does not set
+a period lock on posting, and does not require the approver to be someone other than
+the preparer -- see _assert_approver and the end of post().
 """
 
 from __future__ import annotations
@@ -41,7 +41,6 @@ from app.models import (
     OpeningBalanceHolding,
     OpeningBalanceLine,
     OpeningCustodianRow,
-    PeriodLock,
     ProfitTreatment,
     RecordStatus,
     User,
@@ -1053,11 +1052,6 @@ def _assert_approver(batch: OpeningBalanceBatch, approver: User) -> None:
             "an opening balance batch is approved by finance or an authorised signatory",
             role=str(approver.role),
         )
-    if approver.id == batch.prepared_by:
-        raise MakerCheckerBreach(
-            "the person who prepared the opening balances cannot approve them",
-            batch_id=batch.id,
-        )
 
 
 @dataclass
@@ -1185,14 +1179,6 @@ def approve(db: Session, batch: OpeningBalanceBatch, *, approver: User) -> PostR
     reconciliation = recon_svc.run(
         db, as_of=cutover, performed_by=approver.id, client_id=batch.client_id
     )
-
-    # 5. lock the migrated period
-    lock = db.get(PeriodLock, batch.client_id)
-    if lock is None:
-        db.add(PeriodLock(client_id=batch.client_id, locked_through=cutover, locked_by=approver.id))
-    else:
-        lock.locked_through = max(lock.locked_through, cutover)
-        lock.locked_by = approver.id
 
     batch.status = BatchStatus.POSTED
     batch.approved_by = approver.id

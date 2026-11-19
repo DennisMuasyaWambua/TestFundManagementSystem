@@ -24,7 +24,7 @@ import { formatDate } from "@/lib/format";
  * The order is fixed by the specification and enforced by the API: accruals and rent
  * to the period end, then the exchange revaluation at the closing rate, then the
  * reconciliation must be clean (or overridden with a written reason), and only then
- * is the profit and loss swept to the client's profit and the period locked.
+ * is the profit and loss swept to the client's profit.
  *
  * Each step can be re-run safely: the accrual posts the difference to a cumulative
  * target, so running it twice posts nothing the second time.
@@ -122,7 +122,7 @@ export function CloseRunner({
       actions={
         result ? (
           <span className="text-sm text-success-ink">
-            Locked through {formatDate(result.locked_through)}
+            Closed through {formatDate(result.locked_through)}
           </span>
         ) : null
       }
@@ -143,8 +143,8 @@ export function CloseRunner({
             ? "This period was already closed."
             : "Closed."}{" "}
           Net profit of <Money amount={result.net_profit} /> was moved to the
-          client&rsquo;s profit account. The period is locked through{" "}
-          {formatDate(result.locked_through)}, so nothing can be posted on or before it.
+          client&rsquo;s profit account for the period through{" "}
+          {formatDate(result.locked_through)}.
         </p>
       )}
 
@@ -220,8 +220,8 @@ export function CloseRunner({
               </div>
             </dl>
             <p className="mt-2 text-xs text-muted">
-              After this, nothing can be posted on or before {periodEnd} for this
-              mandate. A back-dated correction then needs a reversal in an open period.
+              This sweeps the period&rsquo;s income and costs to the client&rsquo;s profit
+              for {periodEnd}.
             </p>
           </>
         }

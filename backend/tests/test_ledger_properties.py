@@ -214,9 +214,10 @@ def _month_end_close(seeded: Session, amount: Decimal, rate: Decimal) -> None:
     assert_trial_balance_balances(seeded, period_end)
     assert_statement_reconciles(seeded, CLIENT, period_end)
 
-    # closing the same period again is a no-op
+    # this test system does not lock the period, so closing it again simply
+    # re-sweeps: nothing new accrued, so there is no further profit to move
     second = closing.close(seeded, CLIENT, period_end, created_by="fin.head")
-    assert second.already_closed
+    assert not second.already_closed
     assert second.net_profit == Decimal("0.00")
 
     # and so is re-running the revaluation

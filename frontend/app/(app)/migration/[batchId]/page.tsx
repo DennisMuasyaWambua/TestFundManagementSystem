@@ -26,7 +26,7 @@ export default async function BatchPage({
   params: Promise<{ batchId: string }>;
 }) {
   const { batchId } = await params;
-  const me = await requireUser();
+  await requireUser();
   const detail = await apiFetch<BatchDetail>(`/opening-balances/${batchId}`);
   const batch = detail.batch;
 
@@ -53,8 +53,7 @@ export default async function BatchPage({
               #{batch.journal_entry_id}
             </Link>
           )}{" "}
-          is dated {formatDate(batch.cutover_date)} and the period is locked through that
-          date. Nothing can be posted on or before it again.{" "}
+          is dated {formatDate(batch.cutover_date)}.{" "}
           <Link
             href={`/clients/${batch.client_id}/statement?to=${batch.cutover_date}`}
             className="font-medium underline"
@@ -132,11 +131,7 @@ export default async function BatchPage({
 
       {detail.preview && <BatchPreview preview={detail.preview} />}
 
-      <BatchDecision
-        batch={batch}
-        preview={detail.preview ?? null}
-        isPreparer={batch.prepared_by === me.id}
-      />
+      <BatchDecision batch={batch} preview={detail.preview ?? null} />
     </div>
   );
 }

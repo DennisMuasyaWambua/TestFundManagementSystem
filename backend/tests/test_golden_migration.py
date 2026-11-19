@@ -14,8 +14,8 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
-from app.errors import BusinessRule, Conflict, MakerCheckerBreach
-from app.models import BatchStatus, Holding, HoldingStatus, PeriodLock, User
+from app.errors import BusinessRule, Conflict
+from app.models import BatchStatus, Holding, HoldingStatus, User
 from app.services import opening_balances as ob
 from app.services import reports
 from sqlalchemy.orm import Session
@@ -108,9 +108,7 @@ def test_g1_rayan_opening_batch(seeded: Session) -> None:
     assert statement.reconciles
     assert statement.held_reason is None
 
-    # the migrated period is locked, and accruals start the day after cutover
-    lock = seeded.get(PeriodLock, "RAYAN")
-    assert lock is not None and lock.locked_through == CUTOVER
+    # accruals start the day after cutover (this test system does not lock periods)
     for holding in seeded.query(Holding).filter(Holding.client_id == "RAYAN"):
         assert holding.status is HoldingStatus.ACTIVE
         assert holding.accrual_start == date(2026, 2, 1)
@@ -214,13 +212,15 @@ def test_g2_taaj_opening_batch_is_held_on_suspense(seeded: Session) -> None:
 # --- the controls around the batch ------------------------------------------
 
 
-def test_preparer_cannot_approve_their_own_batch(seeded: Session) -> None:
+def test_preparer_can_approve_their_own_batch(seeded: Session) -> None:
+    """This test system does not restrict the preparer from approving their
+    own batch -- that maker-checker control is deliberately relaxed here."""
     batch = load(seeded, "TAAJ", "taaj")
     ob.validate(seeded, batch)  # type: ignore[arg-type]
     ob.acknowledge_warnings(seeded, batch, user_id="fin.officer", note="ack")  # type: ignore[arg-type]
     ob.submit(seeded, batch, user_id="fin.officer")  # type: ignore[arg-type]
-    with pytest.raises(MakerCheckerBreach):
-        ob.approve(seeded, batch, approver=approver(seeded, "fin.officer"))  # type: ignore[arg-type]
+    result = ob.approve(seeded, batch, approver=approver(seeded, "fin.officer"))  # type: ignore[arg-type]
+    assert result.batch.status is BatchStatus.POSTED
 
 
 def test_warnings_must_be_acknowledged_before_submission(seeded: Session) -> None:

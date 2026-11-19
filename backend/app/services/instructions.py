@@ -1,11 +1,15 @@
 """The custody instruction lifecycle -- the only way money leaves a client account.
 
-PENDING_APPROVAL -> (two signatory approvals, neither the maker) -> APPROVED
+PENDING_APPROVAL -> (two signatory approvals) -> APPROVED
 APPROVED -> (wet-signed letter scanned and uploaded) -> SENT
 SENT -> (custodian confirmation, for exactly the instructed amount) -> SETTLED
 
 Only the move to SETTLED touches the ledger.  Until the custodian confirms, nothing is
 booked: the money has not moved.
+
+This test system does not stop the person who prepared an instruction from also
+being one of its two signatories -- see approve() below. The same signatory still
+cannot sign twice, since that is enforced by a database constraint as well.
 """
 
 from __future__ import annotations
@@ -571,11 +575,6 @@ def approve(db: Session, instruction_id: int, *, approver: User) -> Instruction:
         raise PermissionDenied(
             "only an authorised signatory may approve an instruction", role=str(approver.role)
         )
-    if approver.id == instruction.maker_id:
-        raise MakerCheckerBreach(
-            "the person who prepared an instruction cannot approve it",
-            instruction_id=instruction_id,
-        )
     if any(approval.user_id == approver.id for approval in instruction.approvals):
         raise MakerCheckerBreach(
             "the same signatory cannot approve an instruction twice",
@@ -636,8 +635,6 @@ def reject(db: Session, instruction_id: int, *, user: User, reason: str) -> Inst
         raise PermissionDenied(
             "only an authorised signatory may reject an instruction", role=str(user.role)
         )
-    if user.id == instruction.maker_id:
-        raise MakerCheckerBreach("the person who prepared an instruction cannot reject it")
     if not reason.strip():
         raise BusinessRule("a rejection needs a reason")
     return _terminate(db, instruction, InstructionStatus.REJECTED, user.id, reason)
@@ -878,10 +875,7 @@ def awaiting(db: Session, user: User) -> list[Instruction]:
             .order_by(Instruction.value_date, Instruction.id)
         ).scalars()
         return [
-            row
-            for row in rows
-            if row.maker_id != user.id
-            and all(approval.user_id != user.id for approval in row.approvals)
+            row for row in rows if all(approval.user_id != user.id for approval in row.approvals)
         ]
     if user.role in (UserRole.MAKER, UserRole.FINANCE):
         return list(

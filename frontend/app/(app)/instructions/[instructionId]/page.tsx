@@ -131,7 +131,7 @@ export default async function InstructionPage({
         <div className="space-y-6">
           <Card
             title="Signatures"
-            description="Two authorised signatories, neither of them the preparer."
+            description="Two authorised signatures are required."
           >
             {approvals.length === 0 ? (
               <p className="text-sm text-muted">Not yet signed.</p>

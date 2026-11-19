@@ -205,7 +205,7 @@ export function MigrationWizard({ clients }: { clients: ClientRow[] }) {
 
             <Label
               label="Cutover date"
-              hint="A month-end is best. Every holding loaded must still be live on this date, and nothing may ever be posted on or before it again."
+              hint="A month-end is best. Every holding loaded must still be live on this date."
               required
             >
               <DateInput value={cutover} onChange={(event) => setCutover(event.target.value)} />

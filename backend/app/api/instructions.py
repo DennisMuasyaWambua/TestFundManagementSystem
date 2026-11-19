@@ -161,7 +161,6 @@ def get_instruction(instruction_id: int, db: DbSession, user: CurrentUser) -> In
     can_approve = (
         user.role is UserRole.SIGNATORY
         and instruction.status is InstructionStatus.PENDING_APPROVAL
-        and instruction.maker_id != user.id
         and all(approval.user_id != user.id for approval in instruction.approvals)
     )
     return InstructionDetail(

@@ -72,10 +72,6 @@ export default async function ClosePage({
             <span className="font-medium text-ink">4.</span> Sweep the period&rsquo;s
             income and costs to the client&rsquo;s profit, in base currency.
           </li>
-          <li>
-            <span className="font-medium text-ink">5.</span> Lock the period, so nothing
-            can be posted on or before it again.
-          </li>
         </ol>
         <p className="mt-3 text-xs text-muted">
           Profit and loss reports exclude the closing entry, so each month still shows
