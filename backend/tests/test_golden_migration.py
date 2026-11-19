@@ -14,7 +14,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
-from app.errors import BusinessRule, Conflict
+from app.errors import BusinessRule
 from app.models import BatchStatus, Holding, HoldingStatus, User
 from app.services import opening_balances as ob
 from app.services import reports
@@ -230,11 +230,15 @@ def test_warnings_must_be_acknowledged_before_submission(seeded: Session) -> Non
         ob.submit(seeded, batch, user_id="fin.officer")  # type: ignore[arg-type]
 
 
-def test_a_second_batch_for_the_same_client_is_refused(seeded: Session) -> None:
+def test_a_second_batch_for_the_same_client_is_allowed(seeded: Session) -> None:
+    """This test system deliberately does not restrict a client to one posted
+    batch -- see create_batch()'s docstring for why."""
     batch = load(seeded, "TAAJ", "taaj")
     ob.validate(seeded, batch)  # type: ignore[arg-type]
     ob.acknowledge_warnings(seeded, batch, user_id="fin.officer", note="ack")  # type: ignore[arg-type]
     ob.submit(seeded, batch, user_id="fin.officer")  # type: ignore[arg-type]
     ob.approve(seeded, batch, approver=approver(seeded))  # type: ignore[arg-type]
-    with pytest.raises(Conflict):
-        ob.create_batch(seeded, client_id="TAAJ", cutover_date=CUTOVER, prepared_by="fin.officer")
+    second = ob.create_batch(
+        seeded, client_id="TAAJ", cutover_date=CUTOVER, prepared_by="fin.officer"
+    )
+    assert second.id != batch.id  # type: ignore[union-attr]

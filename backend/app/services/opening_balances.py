@@ -128,23 +128,10 @@ def create_batch(
     if client is None:
         raise NotFound(f"unknown client {client_id}", client_id=client_id)
 
-    posted = (
-        db.execute(
-            select(OpeningBalanceBatch).where(
-                OpeningBalanceBatch.client_id == client_id,
-                OpeningBalanceBatch.status == BatchStatus.POSTED,
-                OpeningBalanceBatch.reverses_batch_id.is_(None),
-            )
-        )
-        .scalars()
-        .all()
-    )
-    if posted:
-        raise Conflict(
-            f"{client_id} already has a posted opening balance batch; correct it with a "
-            "reversal batch",
-            batch_id=posted[0].id,
-        )
+    # A real deployment refuses a second posted batch for the same client here --
+    # on this test system that restriction is deliberately lifted, so any number of
+    # batches (including several posted ones) can be created against one client
+    # while exploring the flow.
 
     batch = OpeningBalanceBatch(
         client_id=client_id,

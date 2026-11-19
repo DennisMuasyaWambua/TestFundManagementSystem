@@ -70,6 +70,20 @@ export function MigrationWizard({ clients }: { clients: ClientRow[] }) {
   const errors = detail?.validation?.errors ?? [];
   const needsAcknowledgement = warnings.length > 0 && !batch?.warnings_acknowledged_by;
 
+  /**
+   * Back to step 1 with a clean slate. The batch already created server-side is
+   * simply abandoned as a draft -- this test system allows any number of batches
+   * per client, so there's nothing to clean up before starting another.
+   */
+  function startOver() {
+    setStep(1);
+    setBatch(null);
+    setDetail(null);
+    setFiles({});
+    setAcknowledgement("");
+    setError(null);
+  }
+
   async function createBatch() {
     setBusy(true);
     setError(null);
@@ -181,7 +195,15 @@ export function MigrationWizard({ clients }: { clients: ClientRow[] }) {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card
+        actions={
+          step > 1 ? (
+            <Button variant="secondary" type="button" onClick={startOver} className="px-3 py-1.5">
+              Start a new batch
+            </Button>
+          ) : null
+        }
+      >
         <Stepper steps={steps} />
       </Card>
 

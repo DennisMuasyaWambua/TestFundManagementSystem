@@ -41,6 +41,9 @@ export default async function BatchPage({
           <>
             <StatusPill state={batch.status} />
             <ButtonLink href="/migration">All batches</ButtonLink>
+            <ButtonLink href="/migration/new" variant="primary">
+              New batch
+            </ButtonLink>
           </>
         }
       />

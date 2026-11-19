@@ -3,24 +3,16 @@ import type { Metadata } from "next";
 import { MigrationWizard } from "@/app/(app)/migration/MigrationWizard";
 import { EmptyState, PageHeader } from "@/components/ui/primitives";
 import { apiFetch } from "@/lib/api/server";
-import type { BatchRow, ClientRow } from "@/lib/api/schema";
+import type { ClientRow } from "@/lib/api/schema";
 
 export const metadata: Metadata = { title: "New opening balance batch" };
 
 export default async function NewMigrationPage() {
-  const [clients, batches] = await Promise.all([
-    apiFetch<ClientRow[]>("/clients"),
-    apiFetch<BatchRow[]>("/opening-balances"),
-  ]);
+  const clients = await apiFetch<ClientRow[]>("/clients");
 
-  // A client's opening balances are loaded once. Offering a second batch for a client
-  // that already has one posted or in flight would only produce a rejection.
-  const taken = new Set(
-    batches
-      .filter((batch) => batch.status !== "REJECTED")
-      .map((batch) => batch.client_id),
-  );
-  const available = clients.filter((client) => !taken.has(client.id));
+  // Every client is always offered here, including one that already has a batch
+  // (draft, rejected, or even posted) -- this test system allows as many batches
+  // per client as you want, for exploring the flow.
 
   return (
     <div className="space-y-6">
@@ -29,13 +21,13 @@ export default async function NewMigrationPage() {
         description="What the client already holds, as at close of business on the cutover date. Every later workflow builds on these figures."
       />
 
-      {available.length === 0 ? (
+      {clients.length === 0 ? (
         <EmptyState
-          title="Every mandate already has a batch"
-          description="A posted batch can only be undone by a reversal batch, approved the same way."
+          title="No clients yet"
+          description="Create a client first, from the Clients screen."
         />
       ) : (
-        <MigrationWizard clients={available} />
+        <MigrationWizard clients={clients} />
       )}
     </div>
   );
