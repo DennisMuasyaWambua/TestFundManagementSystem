@@ -12,3 +12,6 @@ Thumbs.db
 # Python build artifacts
 *.egg-info/
 __pycache__/
+
+# Scratch CSVs for manually testing the opening-balance migration locally
+/backend/test_opening_balances/

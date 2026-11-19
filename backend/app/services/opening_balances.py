@@ -14,7 +14,7 @@ from __future__ import annotations
 import csv
 import io
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -56,8 +56,8 @@ TEMPLATES = {
         "holding_id,asset_class,custody_account,currency,counterparty,face_amount,nominal,"
         "profit_rate,day_basis,start_date,maturity_date,monthly_rent,shariah_cert_ref,"
         "external_ref,description,is_placeholder\n"
-        "FD-R-03,WAKALA,CR0012A,USD,Absa Bank Kenya PLC,1000000.00,,0.0425,365,2026-01-01,"
-        "2026-08-14,,SSB/<REF>,<BANK REF>,Wakala fixed deposit,0\n"
+        "FD-R-03,WAKALA,CR0012A,USD,Absa Bank Kenya PLC,1000000.00,,0.0425,365,01-01-2026,"
+        "14-08-2026,,SSB/<REF>,<BANK REF>,Wakala fixed deposit,0\n"
     ),
     "lines": (
         "account_code,holding_id,currency,debit,credit,description\n"
@@ -71,10 +71,10 @@ TEMPLATES = {
         "2210,,USD,117940.86,,Profit paid to date\n"
     ),
     "custodian_balances": (
-        "custody_account,as_of,balance,statement_ref\nCR0012A,2026-01-31,10710.53,<STATEMENT REF>\n"
+        "custody_account,as_of,balance,statement_ref\nCR0012A,31-01-2026,10710.53,<STATEMENT REF>\n"
     ),
     "custodian_positions": (
-        "holding_id,as_of,amount,statement_ref\nFD-R-03,2026-01-31,1000000.00,<STATEMENT REF>\n"
+        "holding_id,as_of,amount,statement_ref\nFD-R-03,31-01-2026,1000000.00,<STATEMENT REF>\n"
     ),
 }
 
@@ -193,14 +193,18 @@ def _rate(raw: str | None, *, field_name: str, row: int) -> Decimal | None:
 
 
 def _date(raw: str | None, *, field_name: str, row: int) -> date | None:
+    """Every date column in these CSVs is day-month-year, e.g. 31-01-2026."""
     text = (raw or "").strip()
     if not text:
         return None
     try:
-        return date.fromisoformat(text)
+        return datetime.strptime(text, "%d-%m-%Y").date()
     except ValueError as exc:
         raise ValidationFailed(
-            f"row {row}: {field_name} is not an ISO date ({text!r})", row=row, field=field_name
+            f"row {row}: {field_name} is not a day-month-year date ({text!r}); "
+            "expected the form 31-01-2026",
+            row=row,
+            field=field_name,
         ) from exc
 
 
