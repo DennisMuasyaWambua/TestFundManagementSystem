@@ -87,7 +87,7 @@ export function CloseRunner({
   }
 
   async function runRevaluation() {
-    setBusy("fx");
+    setBusy("fx_revaluation");
     setError(null);
     setMessage(null);
     try {

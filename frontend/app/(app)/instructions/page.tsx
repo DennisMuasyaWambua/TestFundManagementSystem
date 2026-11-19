@@ -5,7 +5,7 @@ import { Money } from "@/components/money/Money";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { ButtonLink, Card, EmptyState, PageHeader } from "@/components/ui/primitives";
 import { apiFetch } from "@/lib/api/server";
-import type { InstructionRow, InstructionStatus } from "@/lib/api/schema";
+import type { ClientRow, InstructionRow, InstructionStatus } from "@/lib/api/schema";
 import { requireUser } from "@/lib/auth/me";
 import { PERMISSION, can } from "@/lib/auth/permissions";
 import { formatDate, humanise } from "@/lib/format";
@@ -34,9 +34,12 @@ export default async function InstructionsPage({
   const defaultTab = can(me, PERMISSION.instructionApprove) ? "awaiting" : "open";
   const active = TABS.find((candidate) => candidate.key === tab) ?? TABS.find((c) => c.key === defaultTab)!;
 
-  const all = await apiFetch<InstructionRow[]>("/instructions", {
-    query: { client: client ?? null, limit: 500 },
-  });
+  const [all, clients] = await Promise.all([
+    apiFetch<InstructionRow[]>("/instructions", {
+      query: { client: client ?? null, limit: 500 },
+    }),
+    apiFetch<ClientRow[]>("/clients"),
+  ]);
   const rows = all.filter((row) => active.statuses.includes(row.status));
 
   return (
@@ -53,27 +56,54 @@ export default async function InstructionsPage({
         }
       />
 
-      <nav aria-label="Instruction states" className="flex flex-wrap gap-2">
-        {TABS.map((candidate) => {
-          const count = all.filter((row) => candidate.statuses.includes(row.status)).length;
-          const isActive = candidate.key === active.key;
-          return (
-            <Link
-              key={candidate.key}
-              href={`/instructions?tab=${candidate.key}${client ? `&client=${client}` : ""}`}
-              aria-current={isActive ? "page" : undefined}
-              className={
-                isActive
-                  ? "btn inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink"
-                  : "btn inline-flex items-center gap-2 rounded-lg bg-surface px-4 py-2 text-sm font-medium text-ink ring-1 ring-border ring-inset hover:bg-ground"
-              }
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <nav aria-label="Instruction states" className="flex flex-wrap gap-2">
+          {TABS.map((candidate) => {
+            const count = all.filter((row) => candidate.statuses.includes(row.status)).length;
+            const isActive = candidate.key === active.key;
+            return (
+              <Link
+                key={candidate.key}
+                href={`/instructions?tab=${candidate.key}${client ? `&client=${client}` : ""}`}
+                aria-current={isActive ? "page" : undefined}
+                className={
+                  isActive
+                    ? "btn inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink"
+                    : "btn inline-flex items-center gap-2 rounded-lg bg-surface px-4 py-2 text-sm font-medium text-ink ring-1 ring-border ring-inset hover:bg-ground"
+                }
+              >
+                {candidate.label}
+                <span className="tnum text-xs opacity-75">{count}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <form className="flex items-end gap-2">
+          <input type="hidden" name="tab" value={active.key} />
+          <label className="text-xs text-muted">
+            <span className="block">Client</span>
+            <select
+              name="client"
+              defaultValue={client ?? ""}
+              className="mt-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink"
             >
-              {candidate.label}
-              <span className="tnum text-xs opacity-75">{count}</span>
-            </Link>
-          );
-        })}
-      </nav>
+              <option value="">All clients</option>
+              {clients.map((row) => (
+                <option key={row.id} value={row.id}>
+                  {row.legal_name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="submit"
+            className="btn rounded-lg bg-surface px-4 py-2 text-sm font-medium text-ink ring-1 ring-border ring-inset hover:bg-ground"
+          >
+            Apply
+          </button>
+        </form>
+      </div>
 
       <Card bodyClassName="px-0 py-0">
         {rows.length === 0 ? (
