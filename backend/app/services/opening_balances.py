@@ -161,9 +161,15 @@ def create_batch(
 
 
 def _editable(batch: OpeningBalanceBatch) -> None:
-    if batch.status not in (BatchStatus.DRAFT, BatchStatus.VALIDATED):
+    # A real deployment would stop here once a batch is SUBMITTED (awaiting a second
+    # person's decision) or REJECTED -- on this test system, replacing a file or
+    # re-validating is allowed right up to POSTED, which is the one point past which
+    # there's a real ledger entry to protect. Re-validating (see _finish() below)
+    # resets the status to DRAFT or VALIDATED either way, which is what actually
+    # takes a SUBMITTED batch back out of the approval queue.
+    if batch.status is BatchStatus.POSTED:
         raise Conflict(
-            f"batch {batch.id} is {batch.status} and can no longer be changed",
+            f"batch {batch.id} is posted and can no longer be changed",
             status=str(batch.status),
         )
 
@@ -375,9 +381,15 @@ def expected_accrual(row: OpeningBalanceHolding, cutover: date) -> Decimal | Non
 
 
 def validate(db: Session, batch: OpeningBalanceBatch) -> ValidationReport:
-    """Run every check in section 7.3.  Errors block; warnings need acknowledgement."""
-    if batch.status not in (BatchStatus.DRAFT, BatchStatus.VALIDATED):
-        raise Conflict(f"batch {batch.id} is {batch.status}", status=str(batch.status))
+    """Run every check in section 7.3.  Errors block; warnings need acknowledgement.
+
+    Re-running this on a SUBMITTED or REJECTED batch (allowed on this test system,
+    see _editable()) is what actually reopens it: _finish() below always sets the
+    status from the validation outcome alone, so a re-validate takes it straight
+    back to DRAFT or VALIDATED regardless of what it was before.
+    """
+    if batch.status is BatchStatus.POSTED:
+        raise Conflict(f"batch {batch.id} is posted", status=str(batch.status))
 
     report = ValidationReport()
     cutover = batch.cutover_date

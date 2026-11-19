@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { BatchPreview } from "@/app/(app)/migration/BatchPreview";
 import { ValidationReport } from "@/app/(app)/migration/ValidationReport";
@@ -180,6 +180,30 @@ export function MigrationWizard({
     }
   }
 
+  // Resuming a submitted or rejected batch re-validates it immediately, so its
+  // status is already back to draft/validated by the time the person sees the
+  // step-3 screen -- otherwise "Submit for approval" would fail outright, since
+  // the API only accepts a submit from a freshly validated batch.
+  useEffect(() => {
+    if (!resume) return;
+    if (resume.batch.status !== "SUBMITTED" && resume.batch.status !== "REJECTED") return;
+    const batchId = resume.batch.id;
+    void (async () => {
+      setBusy(true);
+      setError(null);
+      try {
+        await apiSend(`/opening-balances/${batchId}/validate`, { method: "POST", body: {} });
+        const fresh = await apiGet<BatchDetail>(`/opening-balances/${batchId}`);
+        setDetail(fresh);
+        setBatch(fresh.batch);
+      } catch (caught) {
+        setError(errorMessage(caught));
+      } finally {
+        setBusy(false);
+      }
+    })();
+  }, [resume]);
+
   async function refresh(): Promise<BatchDetail | null> {
     if (!batch) return null;
     const fresh = await apiGet<BatchDetail>(`/opening-balances/${batch.id}`);
@@ -246,6 +270,14 @@ export function MigrationWizard({
             {resume && <span className="font-medium text-ink">Resuming batch #{batch.id}. </span>}
             <span className="font-medium text-ink">{batch.client_id}</span>, cutover{" "}
             {formatDate(batch.cutover_date)}.
+            {resume && (batch.status === "SUBMITTED" || batch.status === "REJECTED") && (
+              <>
+                {" "}
+                It was {batch.status.toLowerCase()}; replacing a file or re-validating takes
+                it back out of that state, and a different person will need to approve it
+                again afterwards.
+              </>
+            )}
           </p>
         </Card>
       )}

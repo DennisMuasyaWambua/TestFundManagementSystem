@@ -16,9 +16,16 @@ import {
 import { apiFetch } from "@/lib/api/server";
 import type { BatchDetail } from "@/lib/api/schema";
 import { requireUser } from "@/lib/auth/me";
-import { formatDate } from "@/lib/format";
+import { formatDate, humanise } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Opening balance batch" };
+
+const RESUMABLE_BANNER: Record<string, string> = {
+  DRAFT: "Still being prepared",
+  VALIDATED: "Validated, not yet submitted",
+  SUBMITTED: "Submitted, awaiting approval",
+  REJECTED: "Rejected",
+};
 
 export default async function BatchPage({
   params,
@@ -31,7 +38,9 @@ export default async function BatchPage({
   const batch = detail.batch;
 
   const files = (batch.source_files ?? {}) as Record<string, unknown>;
-  const resumable = batch.status === "DRAFT" || batch.status === "VALIDATED";
+  // Everything short of POSTED can be picked back up -- including a batch that's
+  // been submitted or rejected, which re-validating takes back out of that state.
+  const resumable = batch.status !== "POSTED";
 
   return (
     <div className="space-y-6">
@@ -55,11 +64,16 @@ export default async function BatchPage({
       />
 
       {resumable && (
-        <Banner
-          tone="info"
-          title={batch.status === "DRAFT" ? "Still being prepared" : "Validated, not yet submitted"}
-        >
-          This batch is not finished. Pick up exactly where it was left --{" "}
+        <Banner tone="info" title={RESUMABLE_BANNER[batch.status] ?? "Not yet posted"}>
+          {batch.status === "SUBMITTED" || batch.status === "REJECTED" ? (
+            <>
+              Replacing a file or re-validating takes it back out of {humanise(batch.status)}
+              -- a different person will need to approve it again afterwards.{" "}
+            </>
+          ) : (
+            "This batch is not finished. "
+          )}
+          Pick up exactly where it was left --{" "}
           <Link href={`/migration/${batch.id}/edit`} className="font-medium underline">
             continue editing it
           </Link>
@@ -131,12 +145,21 @@ export default async function BatchPage({
               Source files
             </h3>
             <dl className="mt-2 space-y-1 text-sm">
-              {Object.entries(files).map(([kind, value]) => (
-                <div key={kind} className="flex justify-between gap-3">
-                  <dt className="text-muted">{kind}</dt>
-                  <dd className="truncate font-mono text-xs">{String(value)}</dd>
-                </div>
-              ))}
+              {Object.entries(files).map(([kind, value]) => {
+                const info =
+                  value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+                const filename = typeof info.filename === "string" ? info.filename : String(value);
+                const rows = typeof info.rows === "number" ? info.rows : null;
+                return (
+                  <div key={kind} className="flex justify-between gap-3">
+                    <dt className="text-muted">{kind}</dt>
+                    <dd className="truncate font-mono text-xs">
+                      {filename}
+                      {rows !== null && <span className="text-muted"> ({rows} rows)</span>}
+                    </dd>
+                  </div>
+                );
+              })}
             </dl>
           </div>
         )}
