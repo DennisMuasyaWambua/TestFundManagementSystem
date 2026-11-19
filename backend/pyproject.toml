@@ -65,6 +65,9 @@ addopts = "-q --strict-markers"
 filterwarnings = ["error::DeprecationWarning:app.*"]
 markers = ["golden: golden-number acceptance tests from section 12"]
 
+[tool.setuptools.packages.find]
+include = ["app*", "scripts*"]
+
 [build-system]
 requires = ["setuptools>=75"]
 build-backend = "setuptools.build_meta"

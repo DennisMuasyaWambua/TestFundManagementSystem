@@ -8,3 +8,7 @@
 Thumbs.db
 .idea/
 .vscode/
+
+# Python build artifacts
+*.egg-info/
+__pycache__/
