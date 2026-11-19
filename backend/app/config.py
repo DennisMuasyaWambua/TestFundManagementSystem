@@ -25,8 +25,12 @@ class Settings(BaseSettings):
     file_store_path: str = "./var/files"
 
     # --- Auth -----------------------------------------------------------------
-    access_token_minutes: int = 30
-    idle_warning_minutes: int = 25
+    # A real deployment would keep this short (30 minutes is the spec's figure,
+    # still what docs/CMA_CONTROLS.md and the incident runbook describe). On this
+    # test system it's extended to 8 hours so a session survives a normal working
+    # day without needing to sign in again.
+    access_token_minutes: int = 8 * 60
+    idle_warning_minutes: int = 8 * 60 - 5
     password_min_length: int = 12
     max_failed_attempts: int = 5
     lockout_minutes: int = 15

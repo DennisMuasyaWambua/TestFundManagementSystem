@@ -13,8 +13,8 @@ export const SESSION_COOKIE = "fms_session";
 export const CSRF_COOKIE = "fms_csrf";
 export const CSRF_HEADER = "x-fms-csrf";
 
-/** Mirrors the backend's 30-minute access token. */
-export const SESSION_MAX_AGE_SECONDS = 30 * 60;
+/** Mirrors the backend's access token lifetime (app/config.py's access_token_minutes). */
+export const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
 
 export type SessionCookieOptions = {
   httpOnly: boolean;

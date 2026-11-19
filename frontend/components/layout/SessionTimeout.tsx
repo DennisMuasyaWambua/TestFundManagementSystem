@@ -4,15 +4,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/primitives";
 
-const WARN_AFTER_MS = 25 * 60 * 1000;
-const SIGN_OUT_AFTER_MS = 30 * 60 * 1000;
+const SIGN_OUT_AFTER_MS = 8 * 60 * 60 * 1000;
+const WARN_AFTER_MS = SIGN_OUT_AFTER_MS - 5 * 60 * 1000;
 
 /**
  * Idle sign-out, warning five minutes before.
  *
- * The backend token expires after thirty minutes regardless; this makes the end of
- * the session visible instead of letting a signatory discover it halfway through
- * approving a payment. Any real interaction resets the clock.
+ * The backend token expires after this long regardless (app/config.py's
+ * access_token_minutes); this makes the end of the session visible instead of
+ * letting a signatory discover it halfway through approving a payment. Any real
+ * interaction resets the clock.
  */
 export function SessionTimeout({ onSignOut }: { onSignOut: () => void }) {
   const [warning, setWarning] = useState(false);
