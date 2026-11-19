@@ -33,7 +33,12 @@ async function proxy(request: NextRequest, path: string[]): Promise<NextResponse
     }
   }
 
-  const target = `/${path.join("/")}${request.nextUrl.search}`;
+  // The browser's own fetches address this proxy as /api/v1/... to mirror the
+  // backend's public, versioned path -- but the backend's own base URL (used
+  // below, in apiRequest) already carries that /v1. Forwarding the captured "v1"
+  // segment too would double it (/api/v1/v1/...), which the backend 404s outright.
+  const segments = path[0] === "v1" ? path.slice(1) : path;
+  const target = `/${segments.join("/")}${request.nextUrl.search}`;
   const contentType = request.headers.get("content-type") ?? "";
 
   const idempotencyKey = request.headers.get("idempotency-key");
