@@ -111,9 +111,12 @@ place money actually leaves the building.
 - **On an individual instruction**, the API computes exactly three booleans per
   viewer — `can_approve`, `can_dispatch`, `can_settle` — and the page only shows the
   matching button when true:
-  - **Approve / Reject**: only a **SIGNATORY who has not already signed this
-    instruction and is not the maker who prepared it**. `sig.one` and `sig.two` both
-    need to act, and the system refuses a repeat signature from either of them.
+  - **Approve / Reject**: any **SIGNATORY who has not already signed this
+    instruction**. `sig.one` and `sig.two` both need to act, and the system refuses
+    a repeat signature from the same one twice — but on this test system a
+    signatory may approve an instruction they themselves prepared as MAKER, since
+    the stricter "never the preparer" rule a real deployment enforces is
+    deliberately relaxed here (see the note at the end of this document).
   - **Cancel**: available while the instruction is still `PENDING_APPROVAL` or
     `APPROVED` — this isn't signatory-only, but it still goes through the API's own
     check of who is allowed to touch it.
@@ -128,10 +131,9 @@ place money actually leaves the building.
 
 - **Propose** (Sukuk price or property value): **MAKER or FINANCE**
   (`VALUATION_PROPOSE`) — reached from a holding's own page, not this list.
-- **Approve or reject**: **FINANCE or SIGNATORY** (`VALUATION_APPROVE`) — and never
-  the same user who proposed it. If you can't approve, the screen tells you so
-  directly: *"Approving a valuation needs a finance or signatory role — and never
-  the person who proposed it."*
+- **Approve or reject**: **FINANCE or SIGNATORY** (`VALUATION_APPROVE`). On this
+  test system the same user who proposed it may also approve it — a real
+  deployment would refuse that; see the note at the end of this document.
 - **COMPLIANCE and ADMIN**: view only, same as everyone, no action either way.
 
 ## Exchange rates (`/fx-rates`)
@@ -155,17 +157,17 @@ one's missing) but only finance can enter them.
 
 **FINANCE only** (`LEDGER_OPERATIONS`) — the checklist, the run buttons, and the
 override-with-reason if reconciliation has open breaks. No other role can reach this
-screen; the period lock it sets affects everyone's ability to post, but only FINANCE
-can trigger it.
+screen. (In a real deployment, closing also locks the period for everyone; on this
+test system it does not — see the note at the end of this document.)
 
 ## Opening balance migration (`/migration`, `/migration/new`, `/migration/[id]`)
 
 - **Preparing a batch** (`/migration/new`): **FINANCE only**
   (`OPENING_BALANCE_PREPARE`).
 - **Approving or rejecting it** (`/migration/[id]`): **FINANCE or SIGNATORY**
-  (`OPENING_BALANCE_APPROVE`) — and the API refuses an approval from the same user
-  who prepared it, even if they're FINANCE too. In practice this means a *different*
-  finance head, or either signatory.
+  (`OPENING_BALANCE_APPROVE`). On this test system the same user who prepared the
+  batch may also approve it, and approval does not lock the period — both
+  deliberately relaxed; see the note at the end of this document.
 - **The list itself** is visible to anyone who holds prepare or approve rights —
   MAKER, COMPLIANCE and ADMIN don't see it in the sidebar at all.
 
@@ -241,3 +243,27 @@ most: **nobody holds both "create an instruction" and "approve an instruction"**
 (that's maker-checker, enforced structurally, not just by convention), and **ADMIN
 has a blank row everywhere except user management** — by design, an administrator in
 this system cannot move a single cent, no matter what else they can configure.
+
+---
+
+## A note on what's relaxed on this test system
+
+This table describes which *role* holds which *permission* — that part is
+unchanged and still fully enforced. What's deliberately relaxed here, for
+learning the accounting flow rather than running a live deployment, is a
+narrower, instance-level layer on top of it:
+
+- **Period locking is off.** Posting an opening-balance batch and closing a
+  month-end period both used to lock that client's period so nothing could ever
+  be dated on or before it again. Neither does that here, so you can keep
+  posting earlier-dated entries while exploring without hitting a hard wall.
+- **A single person can act twice on the same record.** A signatory may approve
+  an instruction they themselves raised as MAKER; a FINANCE or SIGNATORY user may
+  approve a valuation they themselves proposed; the preparer of an opening-balance
+  batch may approve it. (One exception stayed in place: the *same* signatory still
+  cannot sign the *same* instruction twice — that's a database constraint, not
+  just an application check, so relaxing it would need a schema change rather
+  than a behaviour flag.)
+
+Everything else in this document — who can even reach a screen, who can run
+reconciliation, ADMIN's complete lack of money powers — is unchanged.

@@ -86,14 +86,16 @@ a single, reconciled opening position **before** any new activity touches them.
    someone clears it (this is exactly what happened to Taaj's 516,745.92 gap).
 4. Preview shows the journal exactly as it will post, and the client statement
    exactly as it will read. `fin.head` submits it.
-5. **A different person — a signatory, or finance's head if `fin.head` wasn't the
-   preparer — approves it** at `/migration/[id]`. The approver can never be the
-   preparer; the system enforces this, not just policy.
+5. **A signatory, or finance's head, approves it** at `/migration/[id]`. (In a real
+   deployment the approver can never be the same person who prepared it — on this
+   test system that control is deliberately relaxed, so you can drive the whole
+   lifecycle solo while you're learning it.)
 6. On approval, in one transaction: the holdings are created (`ACTIVE`, accruing
    from the day *after* cutover), one `OPENING_BALANCE` journal entry posts dated the
-   cutover date, the custodian's own figures are recorded for reconciliation, and the
-   client's **period lock** is set to the cutover date. Nothing can ever be dated on
-   or before that date again.
+   cutover date, and the custodian's own figures are recorded for reconciliation.
+   (In a real deployment this would also lock the period through the cutover date;
+   on this test system nothing is locked, so you can keep posting earlier-dated
+   entries while exploring.)
 
 For our worked G3 example, there's nothing to migrate — it's a brand-new deposit — so
 we skip straight to Stage 3.
@@ -247,8 +249,7 @@ it's deliberately kept apart from the people who can authorise payments.
 
 ## Stage 9 — Month-end close
 
-Once a month, per client, finance runs the close — and once it's run, that period is
-permanently sealed.
+Once a month, per client, finance runs the close.
 
 1. **`fin.head`** opens `/close`, picks the client, and works through the
    checklist in order: **(1)** catch every accrual and rent invoice up to the period
@@ -261,11 +262,14 @@ permanently sealed.
    `CLIENT_PROFIT` — so the client's profit balance is always the single source of
    truth for what they're owed, and this month's profit-and-loss report still shows
    the real income and costs (close entries are excluded from P&L views).
-3. The **period lock** advances to the period end. From this point on, nothing —
-   no receipt, no instruction settlement, no accrual — can ever be dated on or before
-   that date. A back-dated entry is refused outright, with a message naming the lock.
-4. Re-running the close for a period already closed is a safe no-op — it changes
-   nothing and posts nothing twice.
+3. In a real deployment, the period would now be **locked** through the period end —
+   nothing could ever be dated on or before that date again. On this test system
+   that lock is deliberately not applied, so you can keep posting earlier-dated
+   entries while you're exploring the flow.
+4. Re-running the close for the same period re-sweeps it: since nothing new has
+   accrued, there's no further profit to move, so it posts nothing twice in effect —
+   it just isn't detected and short-circuited as "already closed" the way a real,
+   locked deployment would.
 
 ---
 
@@ -311,15 +315,17 @@ Onboard client ──▶ (migrate existing book, if any) ──▶ Fund it (cont
                         ┌─────────────────────────────────────┴───────────────┐
                         ▼                                                     ▼
             Reconciliation (continuous,                          Month-end close (monthly,
-            kept apart from signatories)                           locks the period forever)
+            kept apart from signatories)                         sweeps profit to the client)
                         │                                                     │
                         └───────────────────────┬─────────────────────────────┘
                                                  ▼
                               Client statement (A = B) + regulatory reports
 ```
 
-Every arrow in that diagram is a control, not a formality: a client can't be funded
-until onboarding clears; money can't leave until two people who didn't prepare the
-instruction say so; nothing posts until the custodian confirms it really happened;
-and once a period is closed, history behind it is permanently sealed. That's the
-whole design in one picture.
+Every arrow in that diagram is a control a real deployment relies on, not a
+formality: a client can't be funded until onboarding clears; money can't leave
+until two signatories say so; nothing posts until the custodian confirms it really
+happened. (On this test system, two of the stricter ones — period locking and the
+rule that the preparer can never also be the approver — are deliberately relaxed,
+so you can drive the whole lifecycle solo while you're learning it; see
+`ROLES_GUIDE.md` for exactly where.)
