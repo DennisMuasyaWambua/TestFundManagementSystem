@@ -5,7 +5,7 @@ import { Money, RateBadge } from "@/components/money/Money";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { Card, EmptyState, PageHeader } from "@/components/ui/primitives";
 import { apiFetch } from "@/lib/api/server";
-import type { HoldingListRow } from "@/lib/api/schema";
+import type { ClientRow, HoldingListRow } from "@/lib/api/schema";
 import { formatDate, humanise, todayIso } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Holdings" };
@@ -27,14 +27,20 @@ export default async function HoldingsPage({
   const filters = await searchParams;
   const today = todayIso();
 
-  const rows = await apiFetch<HoldingListRow[]>("/holdings", {
-    query: {
-      client: filters.client ?? null,
-      asset_class: filters.asset_class ?? null,
-      status: filters.status ?? null,
-      as_of: todayIso(),
-    },
-  });
+  // The client list is the same one the Clients screen shows -- already scoped to
+  // what this user may see, so the dropdown can never offer a client the holdings
+  // query would then refuse.
+  const [rows, clients] = await Promise.all([
+    apiFetch<HoldingListRow[]>("/holdings", {
+      query: {
+        client: filters.client ?? null,
+        asset_class: filters.asset_class ?? null,
+        status: filters.status ?? null,
+        as_of: todayIso(),
+      },
+    }),
+    apiFetch<ClientRow[]>("/clients"),
+  ]);
 
   // "Maturing within" is a view of the same rows, not another query: either a
   // day-count preset, or an exact calendar date, whichever the user picked. A
@@ -61,12 +67,18 @@ export default async function HoldingsPage({
             <span className="text-xs font-medium tracking-wide text-muted uppercase">
               Client
             </span>
-            <input
+            <select
               name="client"
               defaultValue={filters.client ?? ""}
-              placeholder="All clients"
               className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
-            />
+            >
+              <option value="">All clients</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.legal_name}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="text-sm">
             <span className="text-xs font-medium tracking-wide text-muted uppercase">
