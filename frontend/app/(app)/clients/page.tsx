@@ -3,14 +3,18 @@ import Link from "next/link";
 
 import { Money } from "@/components/money/Money";
 import { StatusPill } from "@/components/ui/StatusPill";
-import { Card, EmptyState, PageHeader } from "@/components/ui/primitives";
+import { ButtonLink, Card, EmptyState, PageHeader } from "@/components/ui/primitives";
 import { apiFetch } from "@/lib/api/server";
 import type { ClientRow, Dashboard } from "@/lib/api/schema";
+import { requireUser } from "@/lib/auth/me";
+import { PERMISSION, can } from "@/lib/auth/permissions";
 import { formatDate, todayIso } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Clients" };
 
 export default async function ClientsPage() {
+  const me = await requireUser();
+
   // The client list carries the mandate record; the dashboard carries the live
   // valuation and the A = B outcome.  Both are needed to answer "can this client be
   // sent a statement today?", which is the question this screen exists for.
@@ -26,6 +30,11 @@ export default async function ClientsPage() {
       <PageHeader
         title="Clients"
         description="One segregated mandate per client, each with its own custodian accounts, capital and profit."
+        actions={
+          can(me, PERMISSION.clientOnboarding) && (
+            <ButtonLink href="/clients/new">New client</ButtonLink>
+          )
+        }
       />
 
       <Card bodyClassName="px-0 py-0">
