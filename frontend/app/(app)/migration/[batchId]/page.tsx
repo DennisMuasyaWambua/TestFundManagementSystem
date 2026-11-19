@@ -31,6 +31,7 @@ export default async function BatchPage({
   const batch = detail.batch;
 
   const files = (batch.source_files ?? {}) as Record<string, unknown>;
+  const resumable = batch.status === "DRAFT" || batch.status === "VALIDATED";
 
   return (
     <div className="space-y-6">
@@ -41,12 +42,30 @@ export default async function BatchPage({
           <>
             <StatusPill state={batch.status} />
             <ButtonLink href="/migration">All batches</ButtonLink>
-            <ButtonLink href="/migration/new" variant="primary">
+            {resumable && (
+              <ButtonLink href={`/migration/${batch.id}/edit`} variant="primary">
+                Continue editing
+              </ButtonLink>
+            )}
+            <ButtonLink href="/migration/new" variant={resumable ? "secondary" : "primary"}>
               New batch
             </ButtonLink>
           </>
         }
       />
+
+      {resumable && (
+        <Banner
+          tone="info"
+          title={batch.status === "DRAFT" ? "Still being prepared" : "Validated, not yet submitted"}
+        >
+          This batch is not finished. Pick up exactly where it was left --{" "}
+          <Link href={`/migration/${batch.id}/edit`} className="font-medium underline">
+            continue editing it
+          </Link>
+          .
+        </Banner>
+      )}
 
       {batch.status === "POSTED" && (
         <Banner tone="success" title="Posted to the ledger">

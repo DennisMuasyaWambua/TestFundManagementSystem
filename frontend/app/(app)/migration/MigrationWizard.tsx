@@ -12,7 +12,7 @@ import { Button, Card, ErrorBanner } from "@/components/ui/primitives";
 import { apiGet, apiSend, newIdempotencyKey } from "@/lib/api/client";
 import { errorMessage } from "@/lib/api/errors";
 import type { BatchDetail, BatchRow, ClientRow, ProfitTreatment } from "@/lib/api/schema";
-import { previousMonthEnd } from "@/lib/format";
+import { formatDate, previousMonthEnd } from "@/lib/format";
 
 const FILE_KINDS = [
   {
@@ -43,6 +43,18 @@ const FILE_KINDS = [
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
+/** What an already-uploaded file looks like, read off batch.source_files[kind]. */
+function existingFile(
+  batch: BatchRow | null,
+  kind: string,
+): { filename: string; rows: number } | null {
+  const entry = batch?.source_files?.[kind];
+  if (!entry || typeof entry !== "object") return null;
+  const record = entry as Record<string, unknown>;
+  if (typeof record.filename !== "string") return null;
+  return { filename: record.filename, rows: typeof record.rows === "number" ? record.rows : 0 };
+}
+
 /**
  * Loading a client's opening balances, in five steps.
  *
@@ -50,12 +62,26 @@ type Step = 1 | 2 | 3 | 4 | 5;
  * validated, previewed and submitted here, and the posting happens on the approval
  * screen. That separation is the whole point -- a go-live migration is the one entry
  * nobody gets to make alone.
+ *
+ * `resume` picks this up mid-flow, for a batch that was already created (and maybe
+ * already has files, or has already been validated) -- the mandate step is skipped
+ * since the client and cutover date are fixed once the batch exists, and the wizard
+ * opens on whichever step the batch's own state says comes next.
  */
-export function MigrationWizard({ clients }: { clients: ClientRow[] }) {
+export function MigrationWizard({
+  clients = [],
+  resume,
+}: {
+  clients?: ClientRow[];
+  resume?: { batch: BatchRow; detail: BatchDetail };
+}) {
   const router = useRouter();
-  const [step, setStep] = useState<Step>(1);
-  const [batch, setBatch] = useState<BatchRow | null>(null);
-  const [detail, setDetail] = useState<BatchDetail | null>(null);
+  const [step, setStep] = useState<Step>(() => {
+    if (!resume) return 1;
+    return resume.detail.validation ? 3 : 2;
+  });
+  const [batch, setBatch] = useState<BatchRow | null>(resume?.batch ?? null);
+  const [detail, setDetail] = useState<BatchDetail | null>(resume?.detail ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,11 +97,16 @@ export function MigrationWizard({ clients }: { clients: ClientRow[] }) {
   const needsAcknowledgement = warnings.length > 0 && !batch?.warnings_acknowledged_by;
 
   /**
-   * Back to step 1 with a clean slate. The batch already created server-side is
-   * simply abandoned as a draft -- this test system allows any number of batches
-   * per client, so there's nothing to clean up before starting another.
+   * Back to a clean slate. A batch already created server-side is simply abandoned
+   * as a draft -- this test system allows any number of batches per client, so
+   * there's nothing to clean up before starting another. Resuming an existing batch
+   * has no "step 1" to reset to, so this leaves for a genuinely new one instead.
    */
   function startOver() {
+    if (resume) {
+      router.push("/migration/new");
+      return;
+    }
     setStep(1);
     setBatch(null);
     setDetail(null);
@@ -109,7 +140,9 @@ export function MigrationWizard({ clients }: { clients: ClientRow[] }) {
 
   async function uploadAll() {
     if (!batch) return;
-    const missing = FILE_KINDS.filter((entry) => entry.required && !files[entry.kind]);
+    const missing = FILE_KINDS.filter(
+      (entry) => entry.required && !files[entry.kind] && !existingFile(batch, entry.kind),
+    );
     if (missing.length > 0) {
       setError(`Still to attach: ${missing.map((entry) => entry.label).join(", ")}.`);
       return;
@@ -206,6 +239,16 @@ export function MigrationWizard({ clients }: { clients: ClientRow[] }) {
       >
         <Stepper steps={steps} />
       </Card>
+
+      {batch && (
+        <Card bodyClassName="px-5 py-3">
+          <p className="text-sm text-muted">
+            {resume && <span className="font-medium text-ink">Resuming batch #{batch.id}. </span>}
+            <span className="font-medium text-ink">{batch.client_id}</span>, cutover{" "}
+            {formatDate(batch.cutover_date)}.
+          </p>
+        </Card>
+      )}
 
       {error && <ErrorBanner message={error} />}
 
@@ -304,6 +347,7 @@ export function MigrationWizard({ clients }: { clients: ClientRow[] }) {
                 hint={entry.hint}
                 accept=".csv,text/csv"
                 required={entry.required}
+                existing={existingFile(batch, entry.kind)}
                 onFileChange={(file) =>
                   setFiles((previous) => ({ ...previous, [entry.kind]: file }))
                 }

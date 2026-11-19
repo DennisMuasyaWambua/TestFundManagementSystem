@@ -18,6 +18,7 @@ export function FileDrop({
   accept,
   hint,
   required = false,
+  existing,
   onFileChange,
 }: {
   name: string;
@@ -25,6 +26,8 @@ export function FileDrop({
   accept?: string;
   hint?: string;
   required?: boolean;
+  /** Already on the batch from an earlier upload -- shown when resuming a batch. */
+  existing?: { filename: string; rows: number } | null;
   onFileChange?: (file: File | null) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -59,9 +62,15 @@ export function FileDrop({
     <div>
       <span className="text-sm font-medium text-ink">
         {label}
-        {required && <span className="text-danger-ink"> *</span>}
+        {required && !existing && <span className="text-danger-ink"> *</span>}
       </span>
       {hint && <span className="mt-0.5 block text-xs text-muted">{hint}</span>}
+      {existing && !file && (
+        <p className="mt-1 text-xs text-success-ink">
+          Already on file: {existing.filename} ({existing.rows} row
+          {existing.rows === 1 ? "" : "s"}). Choose a file below only to replace it.
+        </p>
+      )}
 
       <div
         onDragOver={(event) => {
