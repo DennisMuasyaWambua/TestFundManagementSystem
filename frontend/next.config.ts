@@ -11,7 +11,15 @@ const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   typedRoutes: false,
-  experimental: { typedEnv: false },
+  experimental: {
+    typedEnv: false,
+    // Server Actions compare the request's Origin against the forwarded host and
+    // reject a mismatch as a CSRF precaution. Behind nginx on a non-default port
+    // (8543), with the proxy forwarding the full host:port, the two already agree
+    // -- this is a defensive backstop for that same origin should any proxy in
+    // front of it ever send a bare host without the port.
+    serverActions: { allowedOrigins: ["172.17.0.100:8543"] },
+  },
   async redirects() {
     // The root is not a screen of its own: signed-in users land on the dashboard,
     // and the middleware sends everybody else to /login.

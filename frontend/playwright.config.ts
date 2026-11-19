@@ -26,13 +26,17 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 
   webServer: {
-    command: "npm run build && npm run start",
+    // The standalone server, the same way the production Docker image runs it --
+    // `next start` warns it does not work with `output: standalone` and falls
+    // back to a slower, less representative path.
+    command: "npm run build && npm run start:standalone",
     url: "http://127.0.0.1:3000/login",
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
     env: {
       FMS_API_URL: process.env.FMS_API_URL ?? "http://127.0.0.1:8000/api/v1",
       NODE_ENV: "production",
+      PORT: "3000",
     },
   },
 });
