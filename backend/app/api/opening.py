@@ -218,8 +218,7 @@ def upload_file(
         # which of the four roles it was uploaded as here is what lets the person
         # find the right file to fix, rather than guessing from the row number alone.
         raise type(exc)(
-            f'"{filename}" (uploaded as the {KIND_LABELS[kind]} file) was rejected: '
-            f"{exc.message}",
+            f'"{filename}" (uploaded as the {KIND_LABELS[kind]} file) was rejected: {exc.message}',
             filename=filename,
             kind=kind,
             **exc.details,
