@@ -238,7 +238,7 @@ class UpdateCutoverDateRequest(Schema):
     cutover_date: date
 
 
-class UpdateClientRequest(Schema):
+class UpdateBatchClientRequest(Schema):
     client_id: str
 
 

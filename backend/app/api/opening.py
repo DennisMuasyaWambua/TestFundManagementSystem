@@ -18,7 +18,7 @@ from app.schemas.models import (
     CreateBatchRequest,
     PreviewBody,
     ReasonRequest,
-    UpdateClientRequest,
+    UpdateBatchClientRequest,
     UpdateCutoverDateRequest,
     UpdateProfitSettingsRequest,
     ValidationReportBody,
@@ -141,7 +141,7 @@ def update_cutover_date(
 @router.put("/opening-balances/{batch_id}/client", response_model=BatchRow)
 def update_client(
     batch_id: int,
-    body: UpdateClientRequest,
+    body: UpdateBatchClientRequest,
     db: DbSession,
     actor: User = PREPARE,
 ) -> BatchRow:
