@@ -111,6 +111,11 @@ services:
       NODE_ENV: production
       # Server-side only: the browser never learns this address.
       FMS_API_URL: http://api:8000/api/v1
+      # Docker sets its own HOSTNAME to the container ID, and the standalone
+      # server.js does `process.env.HOSTNAME || '0.0.0.0'` -- without this
+      # override it binds only to the container's own IP, never 127.0.0.1, which
+      # fails the image's HEALTHCHECK (it curls 127.0.0.1 from inside).
+      HOSTNAME: 0.0.0.0
     ports:
       - "3000:3000"
     depends_on:
