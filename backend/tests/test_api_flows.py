@@ -169,6 +169,104 @@ def test_rayan_migration_end_to_end(client: TestClient) -> None:
     assert rayan["reconciles"] is True
 
 
+def test_bad_csv_upload_names_the_file_and_the_problem(client: TestClient) -> None:
+    finance = sign_in(client, "fin.officer")
+    batch_id = client.post(
+        "/api/v1/opening-balances",
+        headers=finance,
+        json={"client_id": "RAYAN", "cutover_date": CUTOVER},
+    ).json()["id"]
+
+    bad_csv = "custody_account,as_of,balance,statement_ref\nCR0012A,2026-01-31,10710.53,REF\n"
+    response = client.post(
+        f"/api/v1/opening-balances/{batch_id}/files",
+        headers=finance,
+        data={"kind": "custodian_balances"},
+        files={"upload": ("absa_jan_statement.csv", io.BytesIO(bad_csv.encode()), "text/csv")},
+    )
+    assert response.status_code == 422
+    error = response.json()["error"]
+    assert error["code"] == "VALIDATION_FAILED"
+    assert "absa_jan_statement.csv" in error["message"]
+    assert "custodian balances" in error["message"]
+    assert "row 2" in error["message"]
+    assert "day-month-year" in error["message"]
+    assert error["details"]["filename"] == "absa_jan_statement.csv"
+    assert error["details"]["kind"] == "custodian_balances"
+    assert error["details"]["row"] == 2
+
+
+def test_cutover_date_can_be_corrected_before_posting(client: TestClient) -> None:
+    finance = sign_in(client, "fin.officer")
+    batch_id = client.post(
+        "/api/v1/opening-balances",
+        headers=finance,
+        json={
+            "client_id": "RAYAN",
+            "cutover_date": CUTOVER,
+            "pro_rata_accrual_split": True,
+        },
+    ).json()["id"]
+
+    for kind in ("holdings", "lines", "custodian_balances", "custodian_positions"):
+        upload(client, finance, batch_id, kind)
+    validated = client.post(f"/api/v1/opening-balances/{batch_id}/validate", headers=finance).json()
+    assert validated["ok"] is True, validated["errors"]
+    client.post(
+        f"/api/v1/opening-balances/{batch_id}/acknowledge-warnings",
+        headers=finance,
+        json={"note": "Per-deposit accrued profit pending from Absa; placeholder accepted."},
+    )
+
+    # The CSVs' own as_of dates were keyed to the original cutover; moving it to a
+    # date they do not match has to drop the batch back to DRAFT and wipe the stale
+    # validation report, not leave it looking VALIDATED against a date nothing
+    # was actually checked against.
+    corrected = client.put(
+        f"/api/v1/opening-balances/{batch_id}/cutover-date",
+        headers=finance,
+        json={"cutover_date": "2026-02-28"},
+    )
+    assert corrected.status_code == 200, corrected.text
+    body = corrected.json()
+    assert body["cutover_date"] == "2026-02-28"
+    assert body["status"] == "DRAFT"
+
+    detail = client.get(f"/api/v1/opening-balances/{batch_id}", headers=finance).json()
+    assert detail["validation"] is None
+
+    # Moving it back to the date the CSVs actually agree with lets the batch pass
+    # validation and reach POSTED again, confirming the field stays editable right
+    # up to that point.
+    client.put(
+        f"/api/v1/opening-balances/{batch_id}/cutover-date",
+        headers=finance,
+        json={"cutover_date": CUTOVER},
+    )
+    revalidated = client.post(
+        f"/api/v1/opening-balances/{batch_id}/validate", headers=finance
+    ).json()
+    assert revalidated["ok"] is True, revalidated["errors"]
+    client.post(
+        f"/api/v1/opening-balances/{batch_id}/acknowledge-warnings",
+        headers=finance,
+        json={"note": "Per-deposit accrued profit pending from Absa; placeholder accepted."},
+    )
+    client.post(f"/api/v1/opening-balances/{batch_id}/submit", headers=finance)
+    posted = client.post(f"/api/v1/opening-balances/{batch_id}/approve", headers=finance)
+    assert posted.status_code == 200, posted.text
+
+    # Once posted, there is a real ledger entry keyed to this date -- it can no
+    # longer move.
+    blocked = client.put(
+        f"/api/v1/opening-balances/{batch_id}/cutover-date",
+        headers=finance,
+        json={"cutover_date": "2026-03-31"},
+    )
+    assert blocked.status_code == 409
+    assert blocked.json()["error"]["code"] == "CONFLICT"
+
+
 def test_back_dated_posting_is_allowed_since_this_system_does_not_lock_periods(
     client: TestClient,
 ) -> None:

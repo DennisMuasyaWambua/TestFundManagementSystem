@@ -18,6 +18,7 @@ from app.schemas.models import (
     CreateBatchRequest,
     PreviewBody,
     ReasonRequest,
+    UpdateCutoverDateRequest,
     ValidationReportBody,
 )
 from app.services import files as files_svc
@@ -33,6 +34,13 @@ KIND_FIELDS = {
     "lines": "lines",
     "custodian_balances": "BALANCE",
     "custodian_positions": "POSITION",
+}
+
+KIND_LABELS = {
+    "holdings": "holdings",
+    "lines": "opening journal lines",
+    "custodian_balances": "custodian balances",
+    "custodian_positions": "custodian positions",
 }
 
 
@@ -101,6 +109,25 @@ def create_batch(body: CreateBatchRequest, db: DbSession, actor: User = PREPARE)
     return _batch_row(batch)
 
 
+@router.put("/opening-balances/{batch_id}/cutover-date", response_model=BatchRow)
+def update_cutover_date(
+    batch_id: int,
+    body: UpdateCutoverDateRequest,
+    db: DbSession,
+    actor: User = PREPARE,
+) -> BatchRow:
+    """Correct the cutover date on a batch that has not been posted yet.
+
+    This drops the batch back to DRAFT -- every custodian row and the preview's
+    accrual maths was checked against the old date, so whatever validation already
+    ran no longer means anything.
+    """
+    batch = ob.get_batch(db, batch_id)
+    guard_client(db, actor, batch.client_id)
+    ob.update_cutover_date(db, batch, cutover_date=body.cutover_date, user_id=actor.id)
+    return _batch_row(batch)
+
+
 @router.post("/opening-balances/{batch_id}/files", response_model=BatchRow)
 def upload_file(
     batch_id: int,
@@ -126,12 +153,25 @@ def upload_file(
         content_type="text/csv",
     )
     text = raw.decode("utf-8-sig")
-    if kind == "holdings":
-        rows = ob.load_holdings(db, batch, text)
-    elif kind == "lines":
-        rows = ob.load_lines(db, batch, text)
-    else:
-        rows = ob.load_custodian_rows(db, batch, text, kind=KIND_FIELDS[kind])
+    filename = upload.filename or f"{kind}.csv"
+    try:
+        if kind == "holdings":
+            rows = ob.load_holdings(db, batch, text)
+        elif kind == "lines":
+            rows = ob.load_lines(db, batch, text)
+        else:
+            rows = ob.load_custodian_rows(db, batch, text, kind=KIND_FIELDS[kind])
+    except BusinessRule as exc:
+        # The service layer only sees CSV text, not the upload -- naming the file and
+        # which of the four roles it was uploaded as here is what lets the person
+        # find the right file to fix, rather than guessing from the row number alone.
+        raise type(exc)(
+            f'"{filename}" (uploaded as the {KIND_LABELS[kind]} file) was rejected: '
+            f"{exc.message}",
+            filename=filename,
+            kind=kind,
+            **exc.details,
+        ) from exc
 
     source_files = dict(batch.source_files or {})
     source_files[kind] = {

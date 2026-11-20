@@ -174,6 +174,38 @@ def _editable(batch: OpeningBalanceBatch) -> None:
         )
 
 
+def update_cutover_date(
+    db: Session, batch: OpeningBalanceBatch, *, cutover_date: date, user_id: str
+) -> OpeningBalanceBatch:
+    """Correct the "as at when" on a batch that has not been posted yet.
+
+    Every custodian row and the preview's accrual maths is checked against this
+    date, so changing it makes whatever validation already ran meaningless -- the
+    batch drops back to DRAFT (and any warning acknowledgement is cleared with it)
+    so it has to be validated again before it can be submitted.
+    """
+    _editable(batch)
+    if cutover_date == batch.cutover_date:
+        return batch
+    previous = batch.cutover_date
+    batch.cutover_date = cutover_date
+    batch.status = BatchStatus.DRAFT
+    batch.validation_report = {}
+    batch.warnings_acknowledged_by = None
+    batch.warnings_acknowledged_note = None
+    db.flush()
+    audit.record(
+        db,
+        user_id=user_id,
+        action="OPENING_BATCH_CUTOVER_DATE_CHANGED",
+        entity="opening_balance_batch",
+        entity_id=batch.id,
+        client_id=batch.client_id,
+        detail={"previous": previous.isoformat(), "new": cutover_date.isoformat()},
+    )
+    return batch
+
+
 def _decimal(raw: str | None, *, field_name: str, row: int) -> Decimal | None:
     text = (raw or "").strip()
     if not text:
@@ -395,6 +427,31 @@ def validate(db: Session, batch: OpeningBalanceBatch) -> ValidationReport:
     cutover = batch.cutover_date
     accrued_code = resolve(db, batch.client_id, ACCRUED_ROLE)
     owners = client_owned_accounts(db)
+
+    # A previous run of _apply_pro_rata_split() below deletes the uploaded lump-sum
+    # line outright once it is split, so a second run would find nothing left to
+    # split and silently drop the figure from the batch. Rebuilding that lump sum
+    # from its derived children -- before they are cleared below -- is what makes
+    # re-running validation (the "Re-validate" button, or a cutover date
+    # correction) repeatable instead of destructive the second time.
+    pro_rata_splits: dict[int, list[OpeningBalanceLine]] = {}
+    for line in batch.lines:
+        if line.derived and line.account_code == accrued_code and line.holding_id:
+            pro_rata_splits.setdefault(line.row_number, []).append(line)
+    for row_number, split_lines in pro_rata_splits.items():
+        total = sum((split_line.signed for split_line in split_lines), ZERO)
+        db.add(
+            OpeningBalanceLine(
+                batch_id=batch.id,
+                row_number=row_number,
+                account_code=accrued_code,
+                currency=split_lines[0].currency,
+                debit=total if total > 0 else ZERO,
+                credit=-total if total < 0 else ZERO,
+                description="accrued profit, pending the pro-rata split below",
+                created_by=batch.prepared_by,
+            )
+        )
 
     # drop any previously derived rows so validation is repeatable
     for line in [line for line in batch.lines if line.derived]:

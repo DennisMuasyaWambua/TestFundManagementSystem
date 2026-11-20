@@ -234,6 +234,10 @@ class CreateBatchRequest(Schema):
     pro_rata_accrual_split: bool = False
 
 
+class UpdateCutoverDateRequest(Schema):
+    cutover_date: date
+
+
 class BatchRow(Schema):
     id: int
     client_id: str

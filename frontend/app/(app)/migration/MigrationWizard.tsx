@@ -92,6 +92,9 @@ export function MigrationWizard({
   const [files, setFiles] = useState<Record<string, File | null>>({});
   const [acknowledgement, setAcknowledgement] = useState("");
 
+  const [editingCutover, setEditingCutover] = useState(false);
+  const [cutoverEdit, setCutoverEdit] = useState("");
+
   const warnings = detail?.validation?.warnings ?? [];
   const errors = detail?.validation?.errors ?? [];
   const needsAcknowledgement = warnings.length > 0 && !batch?.warnings_acknowledged_by;
@@ -131,6 +134,31 @@ export function MigrationWizard({
       });
       setBatch(created);
       setStep(2);
+    } catch (caught) {
+      setError(errorMessage(caught));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /**
+   * The cutover date is checked against every custodian row and the preview's
+   * accrual maths, so changing it drops the batch back to DRAFT server-side --
+   * whatever was already validated no longer means anything against the new date.
+   */
+  async function saveCutoverDate() {
+    if (!batch || !cutoverEdit) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await apiSend<BatchRow>(`/opening-balances/${batch.id}/cutover-date`, {
+        method: "PUT",
+        body: { cutover_date: cutoverEdit },
+      });
+      setBatch(updated);
+      setEditingCutover(false);
+      if (detail) await refresh();
+      if (step > 2) setStep(2);
     } catch (caught) {
       setError(errorMessage(caught));
     } finally {
@@ -269,7 +297,56 @@ export function MigrationWizard({
           <p className="text-sm text-muted">
             {resume && <span className="font-medium text-ink">Resuming batch #{batch.id}. </span>}
             <span className="font-medium text-ink">{batch.client_id}</span>, cutover{" "}
-            {formatDate(batch.cutover_date)}.
+            {editingCutover ? (
+              <span className="inline-flex items-center gap-2">
+                <DateInput
+                  value={cutoverEdit}
+                  onChange={(event) => setCutoverEdit(event.target.value)}
+                  className="mt-0 inline-block w-auto py-1"
+                />
+                <Button
+                  type="button"
+                  onClick={saveCutoverDate}
+                  disabled={busy || !cutoverEdit}
+                  className="px-2 py-1 text-xs"
+                >
+                  Save
+                </Button>
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={() => setEditingCutover(false)}
+                  disabled={busy}
+                  className="px-2 py-1 text-xs"
+                >
+                  Cancel
+                </Button>
+              </span>
+            ) : (
+              <>
+                {formatDate(batch.cutover_date)}
+                {batch.status !== "POSTED" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCutoverEdit(batch.cutover_date);
+                      setEditingCutover(true);
+                    }}
+                    className="ml-2 text-xs text-accent underline"
+                  >
+                    Edit
+                  </button>
+                )}
+              </>
+            )}
+            .
+            {batch.status !== "POSTED" && (
+              <>
+                {" "}
+                Changing it drops the batch back to draft -- any uploaded files are
+                checked against the new date, so re-validate afterwards.
+              </>
+            )}
             {resume && (batch.status === "SUBMITTED" || batch.status === "REJECTED") && (
               <>
                 {" "}
