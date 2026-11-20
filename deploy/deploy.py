@@ -150,7 +150,7 @@ def main() -> int:
                     f"rm -rf {project_dir} && mv {project_dir}.new {project_dir})")
         remote.run(f"rm -f {remote_tarball}")
 
-        print("== Writing secrets (only if this is the first deploy) ==")
+        print("== Writing secrets ==")
         env_path = posixpath.join(deploy_dir, ".env")
         has_env = remote.run(f"[ -f {env_path} ] && echo yes || echo no", check=False).strip()
         if has_env != "yes":
@@ -159,13 +159,35 @@ def main() -> int:
                 f"POSTGRES_PASSWORD={secrets.token_urlsafe(24)}\n"
                 "POSTGRES_DB=fms\n"
                 f"FMS_SECRET_KEY={secrets.token_hex(32)}\n"
+                f"NEXT_SERVER_ACTIONS_ENCRYPTION_KEY={secrets.token_urlsafe(32)}\n"
                 "WEB_PORT=3100\n"
                 "API_PORT=8101\n"
             )
             sftp_upload_bytes(sftp, env_contents.encode(), env_path)
             print(f"   wrote a fresh {env_path}")
         else:
-            print(f"   {env_path} already exists; leaving it alone")
+            # A later run than the one that created .env can still introduce a new
+            # required key (e.g. NEXT_SERVER_ACTIONS_ENCRYPTION_KEY). Add anything
+            # missing without touching a secret that's already there.
+            existing = remote.run(f"cat {env_path}").strip()
+            existing_keys = {
+                line.split("=", 1)[0]
+                for line in existing.splitlines()
+                if line and not line.startswith("#") and "=" in line
+            }
+            defaults = {
+                "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": lambda: secrets.token_urlsafe(32),
+            }
+            additions = {
+                key: make_value() for key, make_value in defaults.items() if key not in existing_keys
+            }
+            if additions:
+                new_lines = "\n".join(f"{key}={value}" for key, value in additions.items())
+                updated = existing + "\n" + new_lines + "\n"
+                sftp_upload_bytes(sftp, updated.encode(), env_path)
+                print(f"   added missing key(s) to {env_path}: {', '.join(additions)}")
+            else:
+                print(f"   {env_path} already has everything it needs; leaving it alone")
 
         print("== Building and starting the stack ==")
         compose = (

@@ -107,6 +107,11 @@ services:
       # Server-side only: the browser never learns this address. Reached over the
       # compose network's own DNS, not through nginx.
       FMS_API_URL: http://api:8000/api/v1
+      # Fixed across restarts/redeploys so Server Action IDs a browser already has
+      # (e.g. a bound login form) stay valid -- otherwise Next.js generates a new
+      # random key on every "web" restart and open tabs fail with
+      # "Failed to find Server Action".
+      NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:?Set NEXT_SERVER_ACTIONS_ENCRYPTION_KEY in deploy/.env}
     depends_on:
       api:
         condition: service_healthy
