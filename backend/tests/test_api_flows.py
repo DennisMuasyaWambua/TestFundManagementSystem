@@ -448,6 +448,56 @@ def test_client_can_be_corrected_before_posting(client: TestClient) -> None:
     assert blocked.json()["error"]["code"] == "CONFLICT"
 
 
+def test_profit_settings_can_be_corrected_before_posting(client: TestClient) -> None:
+    finance = sign_in(client, "fin.officer")
+    batch_id = client.post(
+        "/api/v1/opening-balances",
+        headers=finance,
+        json={"client_id": "RAYAN", "cutover_date": CUTOVER},
+    ).json()["id"]
+    for kind in ("holdings", "lines", "custodian_balances", "custodian_positions"):
+        upload(client, finance, batch_id, kind)
+
+    # The seed lines.csv carries one lump accrued-profit total with no holding_id
+    # -- it needs the pro-rata split switched on to load at all.
+    blocked = client.post(f"/api/v1/opening-balances/{batch_id}/validate", headers=finance).json()
+    assert blocked["ok"] is False
+    assert any(e["code"] == "HOLDING_REQUIRED" for e in blocked["errors"])
+
+    corrected = client.put(
+        f"/api/v1/opening-balances/{batch_id}/profit-settings",
+        headers=finance,
+        json={"profit_treatment": "CLIENT_PROFIT_ONLY", "pro_rata_accrual_split": True},
+    )
+    assert corrected.status_code == 200, corrected.text
+    body = corrected.json()
+    assert body["pro_rata_accrual_split"] is True
+    assert body["status"] == "DRAFT"
+
+    detail = client.get(f"/api/v1/opening-balances/{batch_id}", headers=finance).json()
+    assert detail["validation"] is None
+
+    validated = client.post(f"/api/v1/opening-balances/{batch_id}/validate", headers=finance).json()
+    assert validated["ok"] is True, validated["errors"]
+    assert any(w["code"] == "PRO_RATA_ACCRUAL_PLACEHOLDER" for w in validated["warnings"])
+    client.post(
+        f"/api/v1/opening-balances/{batch_id}/acknowledge-warnings",
+        headers=finance,
+        json={"note": "Per-deposit accrued profit pending from Absa; placeholder accepted."},
+    )
+    client.post(f"/api/v1/opening-balances/{batch_id}/submit", headers=finance)
+    posted = client.post(f"/api/v1/opening-balances/{batch_id}/approve", headers=finance)
+    assert posted.status_code == 200, posted.text
+
+    blocked_again = client.put(
+        f"/api/v1/opening-balances/{batch_id}/profit-settings",
+        headers=finance,
+        json={"profit_treatment": "INCLUDE_PL", "pro_rata_accrual_split": False},
+    )
+    assert blocked_again.status_code == 409
+    assert blocked_again.json()["error"]["code"] == "CONFLICT"
+
+
 def test_back_dated_posting_is_allowed_since_this_system_does_not_lock_periods(
     client: TestClient,
 ) -> None:

@@ -20,6 +20,7 @@ from app.schemas.models import (
     ReasonRequest,
     UpdateClientRequest,
     UpdateCutoverDateRequest,
+    UpdateProfitSettingsRequest,
     ValidationReportBody,
 )
 from app.services import files as files_svc
@@ -154,6 +155,28 @@ def update_client(
     guard_client(db, actor, batch.client_id)
     guard_client(db, actor, body.client_id)
     ob.update_client(db, batch, client_id=body.client_id, user_id=actor.id)
+    return _batch_row(batch)
+
+
+@router.put("/opening-balances/{batch_id}/profit-settings", response_model=BatchRow)
+def update_profit_settings(
+    batch_id: int,
+    body: UpdateProfitSettingsRequest,
+    db: DbSession,
+    actor: User = PREPARE,
+) -> BatchRow:
+    """Correct how current-year profit is loaded and whether a lump accrued-profit
+    figure may be split pro rata, on a batch that has not been posted yet.
+    """
+    batch = ob.get_batch(db, batch_id)
+    guard_client(db, actor, batch.client_id)
+    ob.update_profit_settings(
+        db,
+        batch,
+        profit_treatment=body.profit_treatment,
+        pro_rata_accrual_split=body.pro_rata_accrual_split,
+        user_id=actor.id,
+    )
     return _batch_row(batch)
 
 

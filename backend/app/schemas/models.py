@@ -242,6 +242,11 @@ class UpdateClientRequest(Schema):
     client_id: str
 
 
+class UpdateProfitSettingsRequest(Schema):
+    profit_treatment: ProfitTreatment
+    pro_rata_accrual_split: bool
+
+
 class BatchRow(Schema):
     id: int
     client_id: str

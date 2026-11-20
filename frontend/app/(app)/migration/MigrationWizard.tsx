@@ -98,6 +98,10 @@ export function MigrationWizard({
   const [editingClient, setEditingClient] = useState(false);
   const [clientEdit, setClientEdit] = useState("");
 
+  const [editingProfitSettings, setEditingProfitSettings] = useState(false);
+  const [treatmentEdit, setTreatmentEdit] = useState<ProfitTreatment>("CLIENT_PROFIT_ONLY");
+  const [proRataEdit, setProRataEdit] = useState(false);
+
   const warnings = detail?.validation?.warnings ?? [];
   const errors = detail?.validation?.errors ?? [];
   const needsAcknowledgement = warnings.length > 0 && !batch?.warnings_acknowledged_by;
@@ -185,6 +189,31 @@ export function MigrationWizard({
       });
       setBatch(updated);
       setEditingClient(false);
+      if (detail) await refresh();
+      if (step > 2) setStep(2);
+    } catch (caught) {
+      setError(errorMessage(caught));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /**
+   * Both settings change what validate() checks (and, for the pro-rata split,
+   * what it derives), so the batch drops back to DRAFT server-side -- same as
+   * correcting the client or the cutover date does.
+   */
+  async function saveProfitSettings() {
+    if (!batch) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await apiSend<BatchRow>(`/opening-balances/${batch.id}/profit-settings`, {
+        method: "PUT",
+        body: { profit_treatment: treatmentEdit, pro_rata_accrual_split: proRataEdit },
+      });
+      setBatch(updated);
+      setEditingProfitSettings(false);
       if (detail) await refresh();
       if (step > 2) setStep(2);
     } catch (caught) {
@@ -433,6 +462,67 @@ export function MigrationWizard({
                 It was {batch.status.toLowerCase()}; replacing a file or re-validating takes
                 it back out of that state, and a different person will need to approve it
                 again afterwards.
+              </>
+            )}
+          </p>
+
+          <p className="mt-2 text-sm text-muted">
+            {editingProfitSettings ? (
+              <span className="inline-flex flex-wrap items-center gap-2">
+                <Select
+                  value={treatmentEdit}
+                  onChange={(event) => setTreatmentEdit(event.target.value as ProfitTreatment)}
+                  className="mt-0 inline-block w-auto py-1"
+                >
+                  <option value="CLIENT_PROFIT_ONLY">Client profit only</option>
+                  <option value="INCLUDE_PL">Include year-to-date P&amp;L</option>
+                </Select>
+                <label className="inline-flex items-center gap-1.5 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={proRataEdit}
+                    onChange={(event) => setProRataEdit(event.target.checked)}
+                    className="size-4"
+                  />
+                  Split a lump accrued-profit total pro rata
+                </label>
+                <Button
+                  type="button"
+                  onClick={saveProfitSettings}
+                  disabled={busy}
+                  className="px-2 py-1 text-xs"
+                >
+                  Save
+                </Button>
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={() => setEditingProfitSettings(false)}
+                  disabled={busy}
+                  className="px-2 py-1 text-xs"
+                >
+                  Cancel
+                </Button>
+              </span>
+            ) : (
+              <>
+                {batch.profit_treatment === "CLIENT_PROFIT_ONLY"
+                  ? "Client profit only"
+                  : "Includes year-to-date P&L"}
+                {batch.pro_rata_accrual_split && ", accrual split pro rata"}
+                {batch.status !== "POSTED" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTreatmentEdit(batch.profit_treatment);
+                      setProRataEdit(batch.pro_rata_accrual_split);
+                      setEditingProfitSettings(true);
+                    }}
+                    className="ml-2 text-xs text-accent underline"
+                  >
+                    Edit
+                  </button>
+                )}
               </>
             )}
           </p>

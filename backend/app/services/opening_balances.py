@@ -244,6 +244,55 @@ def update_cutover_date(
     return batch
 
 
+def update_profit_settings(
+    db: Session,
+    batch: OpeningBalanceBatch,
+    *,
+    profit_treatment: ProfitTreatment,
+    pro_rata_accrual_split: bool,
+    user_id: str,
+) -> OpeningBalanceBatch:
+    """Correct how current-year profit is loaded and whether a lump accrued-profit
+    figure may be split pro rata, on a batch that has not been posted yet.
+
+    Both change what validate() checks and derives (the pro-rata split inserts its
+    own lines), so the batch drops back to DRAFT -- same as every other setting
+    that can still move before posting.
+    """
+    _editable(batch)
+    if profit_treatment == batch.profit_treatment and pro_rata_accrual_split == (
+        batch.pro_rata_accrual_split
+    ):
+        return batch
+    previous = {
+        "profit_treatment": str(batch.profit_treatment),
+        "pro_rata_accrual_split": batch.pro_rata_accrual_split,
+    }
+    batch.profit_treatment = profit_treatment
+    batch.pro_rata_accrual_split = pro_rata_accrual_split
+    batch.status = BatchStatus.DRAFT
+    batch.validation_report = {}
+    batch.warnings_acknowledged_by = None
+    batch.warnings_acknowledged_note = None
+    db.flush()
+    audit.record(
+        db,
+        user_id=user_id,
+        action="OPENING_BATCH_PROFIT_SETTINGS_CHANGED",
+        entity="opening_balance_batch",
+        entity_id=batch.id,
+        client_id=batch.client_id,
+        detail={
+            "previous": previous,
+            "new": {
+                "profit_treatment": str(profit_treatment),
+                "pro_rata_accrual_split": pro_rata_accrual_split,
+            },
+        },
+    )
+    return batch
+
+
 def _decimal(raw: str | None, *, field_name: str, row: int) -> Decimal | None:
     text = (raw or "").strip()
     if not text:
