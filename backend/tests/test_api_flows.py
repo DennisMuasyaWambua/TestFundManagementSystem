@@ -214,6 +214,33 @@ def test_csv_dates_accept_the_slash_form_too(client: TestClient) -> None:
     assert response.status_code == 200, response.text
 
 
+def test_csv_header_with_stray_spaces_still_loads_its_rows(client: TestClient) -> None:
+    """A header exported from a spreadsheet can carry " debit " / " credit " --
+    with spaces that are invisible in a spreadsheet but, unstripped, make every
+    row.get("debit") return None and silently drop every row with no error at
+    all (the real bug behind a batch reporting NO_ROWS despite a non-empty file).
+    """
+    finance = sign_in(client, "fin.officer")
+    batch_id = client.post(
+        "/api/v1/opening-balances",
+        headers=finance,
+        json={"client_id": "RAYAN", "cutover_date": CUTOVER},
+    ).json()["id"]
+
+    padded_csv = (
+        "account_code,holding_id,currency, debit , credit ,description\n"
+        "1220,,USD,5474000.98,,Wakala deposit\n"
+    )
+    response = client.post(
+        f"/api/v1/opening-balances/{batch_id}/files",
+        headers=finance,
+        data={"kind": "lines"},
+        files={"upload": ("lines.csv", io.BytesIO(padded_csv.encode()), "text/csv")},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["source_files"]["lines"]["rows"] == 1
+
+
 def test_a_draft_batch_can_be_deleted(client: TestClient) -> None:
     finance = sign_in(client, "fin.officer")
     batch_id = client.post(

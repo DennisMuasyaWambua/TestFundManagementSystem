@@ -286,13 +286,28 @@ def _date(raw: str | None, *, field_name: str, row: int) -> date | None:
     )
 
 
+def _csv_rows(content: str) -> csv.DictReader:
+    """A DictReader that is not derailed by stray spaces around a header name.
+
+    A header exported from Excel or Sheets can carry a leading or trailing space
+    (" debit " rather than "debit") that is invisible in a spreadsheet but makes
+    every `row.get("debit")` below return None -- not a parse error, just a column
+    that silently never matches, so every row looks like it carries no debit or
+    credit and the whole file loads as zero rows with no error at all.
+    """
+    reader = csv.DictReader(io.StringIO(content))
+    if reader.fieldnames:
+        reader.fieldnames = [name.strip() if name else name for name in reader.fieldnames]
+    return reader
+
+
 def load_holdings(db: Session, batch: OpeningBalanceBatch, content: str) -> int:
     _editable(batch)
     for existing in list(batch.holdings):
         db.delete(existing)
     db.flush()
     count = 0
-    for index, row in enumerate(csv.DictReader(io.StringIO(content)), start=2):
+    for index, row in enumerate(_csv_rows(content), start=2):
         holding_id = (row.get("holding_id") or "").strip()
         if not holding_id:
             continue
@@ -338,7 +353,7 @@ def load_lines(db: Session, batch: OpeningBalanceBatch, content: str) -> int:
         db.delete(existing)
     db.flush()
     count = 0
-    for index, row in enumerate(csv.DictReader(io.StringIO(content)), start=2):
+    for index, row in enumerate(_csv_rows(content), start=2):
         code = (row.get("account_code") or "").strip()
         if not code:
             continue
@@ -381,7 +396,7 @@ def load_custodian_rows(db: Session, batch: OpeningBalanceBatch, content: str, *
     key_field = "custody_account" if kind == "BALANCE" else "holding_id"
     amount_field = "balance" if kind == "BALANCE" else "amount"
     count = 0
-    for index, row in enumerate(csv.DictReader(io.StringIO(content)), start=2):
+    for index, row in enumerate(_csv_rows(content), start=2):
         key = (row.get(key_field) or "").strip()
         if not key:
             continue
