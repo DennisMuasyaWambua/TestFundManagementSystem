@@ -335,7 +335,7 @@ def _date(raw: str | None, *, field_name: str, row: int) -> date | None:
     )
 
 
-def _csv_rows(content: str) -> csv.DictReader:
+def _csv_rows(content: str) -> csv.DictReader[str]:
     """A DictReader that is not derailed by stray spaces around a header name.
 
     A header exported from Excel or Sheets can carry a leading or trailing space
