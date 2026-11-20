@@ -8,6 +8,12 @@ RUN npm ci --no-audit --no-fund
 FROM node:22-slim AS build
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+# Server Action IDs are salted with this key at build time and baked into the
+# compiled bundle -- it has to be present here, not just at container runtime,
+# or every rebuild mints new IDs and open tabs fail with
+# "Failed to find Server Action".
+ARG NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
+ENV NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

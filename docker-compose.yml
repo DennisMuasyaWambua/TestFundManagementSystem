@@ -102,14 +102,15 @@ services:
   web:
     build:
       context: ./frontend
+      args:
+        # Baked into the build -- fixed here so a rebuild doesn't mint new Server
+        # Action IDs and break any browser tab still holding the old ones (seen as
+        # "Failed to find Server Action").
+        NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: HAAktHXqHQ8zgLY5qJZwJ6vNiL+olBxJ0MK5Q1FmvNM=
     environment:
       NODE_ENV: production
       # Server-side only: the browser never learns this address.
       FMS_API_URL: http://api:8000/api/v1
-      # Fixed so Server Action IDs survive a container restart -- otherwise Next.js
-      # generates a new random key each start and any open tab's bound actions
-      # (e.g. the login form) start failing with "Failed to find Server Action".
-      NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: HAAktHXqHQ8zgLY5qJZwJ6vNiL+olBxJ0MK5Q1FmvNM=
     ports:
       - "3000:3000"
     depends_on:

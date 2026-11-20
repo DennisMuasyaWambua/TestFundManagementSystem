@@ -18,15 +18,7 @@ const config: NextConfig = {
     // (8543), with the proxy forwarding the full host:port, the two already agree
     // -- this is a defensive backstop for that same origin should any proxy in
     // front of it ever send a bare host without the port.
-    serverActions: {
-      allowedOrigins: ["172.17.0.100:8543"],
-      // Without a fixed key, Next.js generates a random one per server start,
-      // which invalidates every Server Action reference a browser tab is still
-      // holding as soon as the container restarts -- surfaced as a flood of
-      // "Failed to find Server Action" errors. Pinning it via env keeps action
-      // IDs valid across restarts and redeploys.
-      encryptionKey: process.env.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY,
-    },
+    serverActions: { allowedOrigins: ["172.17.0.100:8543"] },
   },
   async redirects() {
     // The root is not a screen of its own: signed-in users land on the dashboard,
