@@ -196,6 +196,74 @@ def test_bad_csv_upload_names_the_file_and_the_problem(client: TestClient) -> No
     assert error["details"]["row"] == 2
 
 
+def test_csv_dates_accept_the_slash_form_too(client: TestClient) -> None:
+    finance = sign_in(client, "fin.officer")
+    batch_id = client.post(
+        "/api/v1/opening-balances",
+        headers=finance,
+        json={"client_id": "RAYAN", "cutover_date": CUTOVER},
+    ).json()["id"]
+
+    slash_csv = "custody_account,as_of,balance,statement_ref\nCR0012A,31/01/2026,10710.53,REF\n"
+    response = client.post(
+        f"/api/v1/opening-balances/{batch_id}/files",
+        headers=finance,
+        data={"kind": "custodian_balances"},
+        files={"upload": ("absa_jan_statement.csv", io.BytesIO(slash_csv.encode()), "text/csv")},
+    )
+    assert response.status_code == 200, response.text
+
+
+def test_a_draft_batch_can_be_deleted(client: TestClient) -> None:
+    finance = sign_in(client, "fin.officer")
+    batch_id = client.post(
+        "/api/v1/opening-balances",
+        headers=finance,
+        json={"client_id": "RAYAN", "cutover_date": CUTOVER},
+    ).json()["id"]
+    # Upload a custodian row too -- it has no ORM relationship on the batch, only
+    # a foreign key, so it is the row most likely to be left behind by a careless
+    # delete.
+    upload(client, finance, batch_id, "custodian_balances")
+
+    deleted = client.delete(f"/api/v1/opening-balances/{batch_id}", headers=finance)
+    assert deleted.status_code == 204
+
+    gone = client.get(f"/api/v1/opening-balances/{batch_id}", headers=finance)
+    assert gone.status_code == 404
+
+    still_listed = client.get("/api/v1/opening-balances", headers=finance).json()
+    assert all(row["id"] != batch_id for row in still_listed)
+
+
+def test_a_posted_batch_cannot_be_deleted(client: TestClient) -> None:
+    finance = sign_in(client, "fin.officer")
+    batch_id = client.post(
+        "/api/v1/opening-balances",
+        headers=finance,
+        json={
+            "client_id": "RAYAN",
+            "cutover_date": CUTOVER,
+            "pro_rata_accrual_split": True,
+        },
+    ).json()["id"]
+    for kind in ("holdings", "lines", "custodian_balances", "custodian_positions"):
+        upload(client, finance, batch_id, kind)
+    client.post(f"/api/v1/opening-balances/{batch_id}/validate", headers=finance)
+    client.post(
+        f"/api/v1/opening-balances/{batch_id}/acknowledge-warnings",
+        headers=finance,
+        json={"note": "Per-deposit accrued profit pending from Absa; placeholder accepted."},
+    )
+    client.post(f"/api/v1/opening-balances/{batch_id}/submit", headers=finance)
+    posted = client.post(f"/api/v1/opening-balances/{batch_id}/approve", headers=finance)
+    assert posted.status_code == 200, posted.text
+
+    blocked = client.delete(f"/api/v1/opening-balances/{batch_id}", headers=finance)
+    assert blocked.status_code == 409
+    assert blocked.json()["error"]["code"] == "CONFLICT"
+
+
 def test_cutover_date_can_be_corrected_before_posting(client: TestClient) -> None:
     finance = sign_in(client, "fin.officer")
     batch_id = client.post(
@@ -262,6 +330,65 @@ def test_cutover_date_can_be_corrected_before_posting(client: TestClient) -> Non
         f"/api/v1/opening-balances/{batch_id}/cutover-date",
         headers=finance,
         json={"cutover_date": "2026-03-31"},
+    )
+    assert blocked.status_code == 409
+    assert blocked.json()["error"]["code"] == "CONFLICT"
+
+
+def test_client_can_be_corrected_before_posting(client: TestClient) -> None:
+    finance = sign_in(client, "fin.officer")
+    batch_id = client.post(
+        "/api/v1/opening-balances",
+        headers=finance,
+        json={
+            "client_id": "RAYAN",
+            "cutover_date": CUTOVER,
+            "pro_rata_accrual_split": True,
+        },
+    ).json()["id"]
+    for kind in ("holdings", "lines", "custodian_balances", "custodian_positions"):
+        upload(client, finance, batch_id, kind)
+
+    # RAYAN's own custody account is not one of TAAJ's -- moving the batch to TAAJ
+    # has to drop it back to DRAFT and make that mismatch show up as a validation
+    # error, not leave the RAYAN rows silently posted against the wrong mandate.
+    corrected = client.put(
+        f"/api/v1/opening-balances/{batch_id}/client",
+        headers=finance,
+        json={"client_id": "TAAJ"},
+    )
+    assert corrected.status_code == 200, corrected.text
+    body = corrected.json()
+    assert body["client_id"] == "TAAJ"
+    assert body["status"] == "DRAFT"
+
+    detail = client.get(f"/api/v1/opening-balances/{batch_id}", headers=finance).json()
+    assert detail["validation"] is None
+
+    validated = client.post(f"/api/v1/opening-balances/{batch_id}/validate", headers=finance).json()
+    assert validated["ok"] is False
+    assert any(e["code"] == "UNKNOWN_CUSTODY_ACCOUNT" for e in validated["errors"])
+
+    # Moving it back to the mandate the uploaded rows actually belong to clears
+    # that error, confirming the field stays editable right up to posting.
+    client.put(
+        f"/api/v1/opening-balances/{batch_id}/client", headers=finance, json={"client_id": "RAYAN"}
+    )
+    revalidated = client.post(
+        f"/api/v1/opening-balances/{batch_id}/validate", headers=finance
+    ).json()
+    assert revalidated["ok"] is True, revalidated["errors"]
+    client.post(
+        f"/api/v1/opening-balances/{batch_id}/acknowledge-warnings",
+        headers=finance,
+        json={"note": "Per-deposit accrued profit pending from Absa; placeholder accepted."},
+    )
+    client.post(f"/api/v1/opening-balances/{batch_id}/submit", headers=finance)
+    posted = client.post(f"/api/v1/opening-balances/{batch_id}/approve", headers=finance)
+    assert posted.status_code == 200, posted.text
+
+    blocked = client.put(
+        f"/api/v1/opening-balances/{batch_id}/client", headers=finance, json={"client_id": "TAAJ"}
     )
     assert blocked.status_code == 409
     assert blocked.json()["error"]["code"] == "CONFLICT"

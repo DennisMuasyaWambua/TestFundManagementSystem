@@ -174,6 +174,44 @@ def _editable(batch: OpeningBalanceBatch) -> None:
         )
 
 
+def update_client(
+    db: Session, batch: OpeningBalanceBatch, *, client_id: str, user_id: str
+) -> OpeningBalanceBatch:
+    """Correct which mandate a batch not yet posted belongs to.
+
+    Every account and custody reference the uploaded CSVs resolve against is the
+    client's own chart of accounts, so changing it makes whatever validation
+    already ran meaningless -- the batch drops back to DRAFT (and any warning
+    acknowledgement is cleared with it) so it has to be validated again. The
+    uploaded rows are left as they are; if they do not belong to the new client,
+    validation will say so (e.g. an unknown custody account) rather than this
+    silently discarding them.
+    """
+    _editable(batch)
+    if client_id == batch.client_id:
+        return batch
+    client = db.get(Client, client_id)
+    if client is None:
+        raise NotFound(f"unknown client {client_id}", client_id=client_id)
+    previous = batch.client_id
+    batch.client_id = client_id
+    batch.status = BatchStatus.DRAFT
+    batch.validation_report = {}
+    batch.warnings_acknowledged_by = None
+    batch.warnings_acknowledged_note = None
+    db.flush()
+    audit.record(
+        db,
+        user_id=user_id,
+        action="OPENING_BATCH_CLIENT_CHANGED",
+        entity="opening_balance_batch",
+        entity_id=batch.id,
+        client_id=client_id,
+        detail={"previous": previous, "new": client_id},
+    )
+    return batch
+
+
 def update_cutover_date(
     db: Session, batch: OpeningBalanceBatch, *, cutover_date: date, user_id: str
 ) -> OpeningBalanceBatch:
@@ -231,19 +269,21 @@ def _rate(raw: str | None, *, field_name: str, row: int) -> Decimal | None:
 
 
 def _date(raw: str | None, *, field_name: str, row: int) -> date | None:
-    """Every date column in these CSVs is day-month-year, e.g. 31-01-2026."""
+    """Every date column in these CSVs is day-month-year, e.g. 31-01-2026 or 31/01/2026."""
     text = (raw or "").strip()
     if not text:
         return None
-    try:
-        return datetime.strptime(text, "%d-%m-%Y").date()
-    except ValueError as exc:
-        raise ValidationFailed(
-            f"row {row}: {field_name} is not a day-month-year date ({text!r}); "
-            "expected the form 31-01-2026",
-            row=row,
-            field=field_name,
-        ) from exc
+    for pattern in ("%d-%m-%Y", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(text, pattern).date()
+        except ValueError:
+            continue
+    raise ValidationFailed(
+        f"row {row}: {field_name} is not a day-month-year date ({text!r}); "
+        "expected the form 31-01-2026 or 31/01/2026",
+        row=row,
+        field=field_name,
+    )
 
 
 def load_holdings(db: Session, batch: OpeningBalanceBatch, content: str) -> int:
@@ -1363,6 +1403,32 @@ def get_batch(db: Session, batch_id: int) -> OpeningBalanceBatch:
     if batch is None:
         raise NotFound(f"unknown opening balance batch {batch_id}", batch_id=batch_id)
     return batch
+
+
+def delete_batch(db: Session, batch: OpeningBalanceBatch, *, user_id: str) -> None:
+    """Discard a batch that has not reached the ledger.
+
+    Nothing here has touched the ledger until POSTED (see _editable()), so up to
+    that point a batch is just staged CSV rows -- safe to throw away and start
+    over. The custodian rows have no ORM relationship on the batch (only the
+    holdings and lines do, which cascade), so they are deleted explicitly first.
+    """
+    _editable(batch)
+    for row in db.execute(
+        select(OpeningCustodianRow).where(OpeningCustodianRow.batch_id == batch.id)
+    ).scalars():
+        db.delete(row)
+    audit.record(
+        db,
+        user_id=user_id,
+        action="OPENING_BATCH_DELETED",
+        entity="opening_balance_batch",
+        entity_id=batch.id,
+        client_id=batch.client_id,
+        detail={"status": str(batch.status), "cutover_date": batch.cutover_date.isoformat()},
+    )
+    db.delete(batch)
+    db.flush()
 
 
 def list_batches(db: Session, *, client_id: str | None = None) -> list[OpeningBalanceBatch]:

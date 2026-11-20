@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BatchPreview } from "@/app/(app)/migration/BatchPreview";
 import { ValidationReport } from "@/app/(app)/migration/ValidationReport";
 import { BatchDecision } from "@/app/(app)/migration/[batchId]/BatchDecision";
+import { DeleteBatch } from "@/app/(app)/migration/[batchId]/DeleteBatch";
 import { StatusPill } from "@/components/ui/StatusPill";
 import {
   Banner,
@@ -59,6 +60,7 @@ export default async function BatchPage({
             <ButtonLink href="/migration/new" variant={resumable ? "secondary" : "primary"}>
               New batch
             </ButtonLink>
+            <DeleteBatch batch={batch} />
           </>
         }
       />

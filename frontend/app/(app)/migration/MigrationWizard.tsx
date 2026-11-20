@@ -95,6 +95,9 @@ export function MigrationWizard({
   const [editingCutover, setEditingCutover] = useState(false);
   const [cutoverEdit, setCutoverEdit] = useState("");
 
+  const [editingClient, setEditingClient] = useState(false);
+  const [clientEdit, setClientEdit] = useState("");
+
   const warnings = detail?.validation?.warnings ?? [];
   const errors = detail?.validation?.errors ?? [];
   const needsAcknowledgement = warnings.length > 0 && !batch?.warnings_acknowledged_by;
@@ -157,6 +160,31 @@ export function MigrationWizard({
       });
       setBatch(updated);
       setEditingCutover(false);
+      if (detail) await refresh();
+      if (step > 2) setStep(2);
+    } catch (caught) {
+      setError(errorMessage(caught));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /**
+   * Every account the uploaded CSVs resolve against is the client's own chart of
+   * accounts, so changing the mandate drops the batch back to DRAFT server-side,
+   * same as correcting the cutover date does.
+   */
+  async function saveClient() {
+    if (!batch || !clientEdit) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await apiSend<BatchRow>(`/opening-balances/${batch.id}/client`, {
+        method: "PUT",
+        body: { client_id: clientEdit },
+      });
+      setBatch(updated);
+      setEditingClient(false);
       if (detail) await refresh();
       if (step > 2) setStep(2);
     } catch (caught) {
@@ -296,7 +324,58 @@ export function MigrationWizard({
         <Card bodyClassName="px-5 py-3">
           <p className="text-sm text-muted">
             {resume && <span className="font-medium text-ink">Resuming batch #{batch.id}. </span>}
-            <span className="font-medium text-ink">{batch.client_id}</span>, cutover{" "}
+            {editingClient ? (
+              <span className="inline-flex items-center gap-2">
+                <Select
+                  value={clientEdit}
+                  onChange={(event) => setClientEdit(event.target.value)}
+                  className="mt-0 inline-block w-auto py-1"
+                >
+                  {clients.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.legal_name}
+                    </option>
+                  ))}
+                </Select>
+                <Button
+                  type="button"
+                  onClick={saveClient}
+                  disabled={busy || !clientEdit}
+                  className="px-2 py-1 text-xs"
+                >
+                  Save
+                </Button>
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={() => setEditingClient(false)}
+                  disabled={busy}
+                  className="px-2 py-1 text-xs"
+                >
+                  Cancel
+                </Button>
+              </span>
+            ) : (
+              <>
+                <span className="font-medium text-ink">
+                  {clients.find((option) => option.id === batch.client_id)?.legal_name ??
+                    batch.client_id}
+                </span>
+                {batch.status !== "POSTED" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClientEdit(batch.client_id);
+                      setEditingClient(true);
+                    }}
+                    className="ml-2 text-xs text-accent underline"
+                  >
+                    Edit
+                  </button>
+                )}
+              </>
+            )}
+            , cutover{" "}
             {editingCutover ? (
               <span className="inline-flex items-center gap-2">
                 <DateInput
@@ -343,8 +422,9 @@ export function MigrationWizard({
             {batch.status !== "POSTED" && (
               <>
                 {" "}
-                Changing it drops the batch back to draft -- any uploaded files are
-                checked against the new date, so re-validate afterwards.
+                Changing the mandate or the cutover date drops the batch back to
+                draft -- any uploaded files are checked against the new one, so
+                re-validate afterwards.
               </>
             )}
             {resume && (batch.status === "SUBMITTED" || batch.status === "REJECTED") && (

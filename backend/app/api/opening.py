@@ -18,6 +18,7 @@ from app.schemas.models import (
     CreateBatchRequest,
     PreviewBody,
     ReasonRequest,
+    UpdateClientRequest,
     UpdateCutoverDateRequest,
     ValidationReportBody,
 )
@@ -109,6 +110,14 @@ def create_batch(body: CreateBatchRequest, db: DbSession, actor: User = PREPARE)
     return _batch_row(batch)
 
 
+@router.delete("/opening-balances/{batch_id}", status_code=204)
+def delete_batch(batch_id: int, db: DbSession, actor: User = PREPARE) -> None:
+    """Discard a batch that has not reached the ledger."""
+    batch = ob.get_batch(db, batch_id)
+    guard_client(db, actor, batch.client_id)
+    ob.delete_batch(db, batch, user_id=actor.id)
+
+
 @router.put("/opening-balances/{batch_id}/cutover-date", response_model=BatchRow)
 def update_cutover_date(
     batch_id: int,
@@ -125,6 +134,26 @@ def update_cutover_date(
     batch = ob.get_batch(db, batch_id)
     guard_client(db, actor, batch.client_id)
     ob.update_cutover_date(db, batch, cutover_date=body.cutover_date, user_id=actor.id)
+    return _batch_row(batch)
+
+
+@router.put("/opening-balances/{batch_id}/client", response_model=BatchRow)
+def update_client(
+    batch_id: int,
+    body: UpdateClientRequest,
+    db: DbSession,
+    actor: User = PREPARE,
+) -> BatchRow:
+    """Correct which mandate a batch not yet posted belongs to.
+
+    This drops the batch back to DRAFT -- every account the uploaded CSVs resolve
+    against is the client's own chart of accounts, so whatever validation already
+    ran no longer means anything.
+    """
+    batch = ob.get_batch(db, batch_id)
+    guard_client(db, actor, batch.client_id)
+    guard_client(db, actor, body.client_id)
+    ob.update_client(db, batch, client_id=body.client_id, user_id=actor.id)
     return _batch_row(batch)
 
 

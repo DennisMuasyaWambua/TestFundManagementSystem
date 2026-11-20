@@ -238,6 +238,10 @@ class UpdateCutoverDateRequest(Schema):
     cutover_date: date
 
 
+class UpdateClientRequest(Schema):
+    client_id: str
+
+
 class BatchRow(Schema):
     id: int
     client_id: str
