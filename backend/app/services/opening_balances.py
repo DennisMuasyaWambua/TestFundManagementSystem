@@ -561,15 +561,6 @@ def validate(db: Session, batch: OpeningBalanceBatch) -> ValidationReport:
                     row.row_number,
                 )
             )
-        if not row.shariah_cert_ref:
-            report.errors.append(
-                Finding(
-                    "error",
-                    "NO_SHARIAH_REFERENCE",
-                    f"{row.holding_id}: every investment needs its Shariah approval reference",
-                    row.row_number,
-                )
-            )
         if row.asset_class in (AssetClass.WAKALA, AssetClass.SUKUK):
             missing = [
                 name

@@ -241,6 +241,33 @@ def test_csv_header_with_stray_spaces_still_loads_its_rows(client: TestClient) -
     assert response.json()["source_files"]["lines"]["rows"] == 1
 
 
+def test_holdings_do_not_need_a_shariah_reference_to_load(client: TestClient) -> None:
+    finance = sign_in(client, "fin.officer")
+    batch_id = client.post(
+        "/api/v1/opening-balances",
+        headers=finance,
+        json={"client_id": "RAYAN", "cutover_date": CUTOVER},
+    ).json()["id"]
+
+    holdings_csv = (
+        "holding_id,asset_class,custody_account,currency,counterparty,face_amount,nominal,"
+        "profit_rate,day_basis,start_date,maturity_date,monthly_rent,shariah_cert_ref,"
+        "external_ref,description,is_placeholder\n"
+        "FD-R-01,WAKALA,CR0012A,USD,Absa Bank Kenya PLC,132216.43,,0.0350,365,01-01-2026,"
+        "25-05-2026,,,<ABSA REF>,Wakala fixed deposit,0\n"
+    )
+    response = client.post(
+        f"/api/v1/opening-balances/{batch_id}/files",
+        headers=finance,
+        data={"kind": "holdings"},
+        files={"upload": ("holdings.csv", io.BytesIO(holdings_csv.encode()), "text/csv")},
+    )
+    assert response.status_code == 200, response.text
+
+    validated = client.post(f"/api/v1/opening-balances/{batch_id}/validate", headers=finance).json()
+    assert not any(e["code"] == "NO_SHARIAH_REFERENCE" for e in validated["errors"])
+
+
 def test_a_draft_batch_can_be_deleted(client: TestClient) -> None:
     finance = sign_in(client, "fin.officer")
     batch_id = client.post(
