@@ -8,7 +8,16 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-ENV_PATH="deploy/.env"
+# actions/checkout wipes untracked files (git clean -ffdx) on every run, but the
+# "fms" named Postgres volume survives across runs and across checkouts -- so
+# the secrets that match what's actually in that volume have to live somewhere
+# checkout never touches, not inside the repo's working tree.
+#
+# $HOME isn't always set for a systemd-managed runner service, so resolve the
+# account's home directory from the password database instead of trusting it.
+RUNNER_HOME="${HOME:-$(eval echo "~$(whoami)")}"
+ENV_PATH="${FMS_DEPLOY_ENV_PATH:-$RUNNER_HOME/.fms-deploy.env}"
+echo "== Using secrets file: $ENV_PATH (exists: $([ -f "$ENV_PATH" ] && echo yes || echo no)) =="
 
 if [ ! -f "$ENV_PATH" ]; then
   echo "== Writing a fresh $ENV_PATH =="
