@@ -227,7 +227,9 @@ jobs:
   deploy:
     name: Deploy to production
     # 172.17.0.100 is a private address -- GitHub's hosted runners have no route to
-    # it. This runs on a self-hosted runner registered on srv100 itself instead.
+    # it. This runs on a self-hosted runner registered on srv100 itself instead,
+    # so the deploy step below runs docker compose directly on the box -- no SSH,
+    # no password needed.
     runs-on: self-hosted
     needs: [backend, backend-postgres, frontend, e2e]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -236,14 +238,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install paramiko
-        run: pip install paramiko
-
-      - name: Run deploy/deploy.py over SSH
-        env:
-          DEPLOYSSHPASSWORD: ${{ secrets.DEPLOYSSHPASSWORD }}
-        run: python deploy/deploy.py
+      - name: Build and start the stack
+        run: bash deploy/deploy-local.sh
