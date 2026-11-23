@@ -243,5 +243,5 @@ jobs:
 
       - name: Run deploy/deploy.py over SSH
         env:
-          DEPLOY_SSH_PASSWORD: ${{ secrets.DEPLOY_SSH_PASSWORD }}
+          DEPLOYSSHPASSWORD: ${{ secrets.DEPLOYSSHPASSWORD }}
         run: python deploy/deploy.py

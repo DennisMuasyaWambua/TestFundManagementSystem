@@ -13,12 +13,12 @@ nginx site file, and nothing it does touches another project's containers,
 volumes, or nginx configuration.
 
 Usage:
-    DEPLOY_SSH_PASSWORD='...' python deploy/deploy.py [--host 172.17.0.100]
-                                                       [--user srv]
-                                                       [--remote-dir apps/fms]
-                                                       [--skip-nginx]
+    DEPLOYSSHPASSWORD='...' python deploy/deploy.py [--host 172.17.0.100]
+                                                     [--user srv]
+                                                     [--remote-dir apps/fms]
+                                                     [--skip-nginx]
 
-The SSH password is read from the DEPLOY_SSH_PASSWORD environment variable --
+The SSH password is read from the DEPLOYSSHPASSWORD environment variable --
 deliberately not a command-line argument (visible in `ps`) and never written to
 this file.
 """
@@ -116,9 +116,9 @@ def main() -> int:
     parser.add_argument("--skip-nginx", action="store_true", help="skip installing the nginx site")
     args = parser.parse_args()
 
-    password = os.environ.get("DEPLOY_SSH_PASSWORD")
+    password = os.environ.get("DEPLOYSSHPASSWORD")
     if not password:
-        print("Set DEPLOY_SSH_PASSWORD in the environment before running this.", file=sys.stderr)
+        print("Set DEPLOYSSHPASSWORD in the environment before running this.", file=sys.stderr)
         return 2
 
     print(f"== Connecting to {args.user}@{args.host} ==")
