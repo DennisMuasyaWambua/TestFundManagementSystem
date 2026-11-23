@@ -4434,6 +4434,20 @@
         "title": "TrialBalanceRow",
         "type": "object"
       },
+      "UpdateBatchClientRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "client_id": {
+            "title": "Client Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id"
+        ],
+        "title": "UpdateBatchClientRequest",
+        "type": "object"
+      },
       "UpdateClientRequest": {
         "additionalProperties": false,
         "properties": {
@@ -4497,6 +4511,39 @@
           }
         },
         "title": "UpdateClientRequest",
+        "type": "object"
+      },
+      "UpdateCutoverDateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "cutover_date": {
+            "format": "date",
+            "title": "Cutover Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cutover_date"
+        ],
+        "title": "UpdateCutoverDateRequest",
+        "type": "object"
+      },
+      "UpdateProfitSettingsRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "pro_rata_accrual_split": {
+            "title": "Pro Rata Accrual Split",
+            "type": "boolean"
+          },
+          "profit_treatment": {
+            "$ref": "#/components/schemas/ProfitTreatment"
+          }
+        },
+        "required": [
+          "profit_treatment",
+          "pro_rata_accrual_split"
+        ],
+        "title": "UpdateProfitSettingsRequest",
         "type": "object"
       },
       "UpdateUserRequest": {
@@ -9281,6 +9328,56 @@
       }
     },
     "/api/v1/opening-balances/{batch_id}": {
+      "delete": {
+        "description": "Discard a batch that has not reached the ledger.",
+        "operationId": "delete_batch_api_v1_opening_balances__batch_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Batch",
+        "tags": [
+          "opening-balances"
+        ]
+      },
       "get": {
         "operationId": "get_batch_api_v1_opening_balances__batch_id__get",
         "parameters": [
@@ -9464,6 +9561,144 @@
         ]
       }
     },
+    "/api/v1/opening-balances/{batch_id}/client": {
+      "put": {
+        "description": "Correct which mandate a batch not yet posted belongs to.\n\nThis drops the batch back to DRAFT -- every account the uploaded CSVs resolve\nagainst is the client's own chart of accounts, so whatever validation already\nran no longer means anything.",
+        "operationId": "update_client_api_v1_opening_balances__batch_id__client_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBatchClientRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchRow"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Client",
+        "tags": [
+          "opening-balances"
+        ]
+      }
+    },
+    "/api/v1/opening-balances/{batch_id}/cutover-date": {
+      "put": {
+        "description": "Correct the cutover date on a batch that has not been posted yet.\n\nThis drops the batch back to DRAFT -- every custodian row and the preview's\naccrual maths was checked against the old date, so whatever validation already\nran no longer means anything.",
+        "operationId": "update_cutover_date_api_v1_opening_balances__batch_id__cutover_date_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCutoverDateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchRow"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Cutover Date",
+        "tags": [
+          "opening-balances"
+        ]
+      }
+    },
     "/api/v1/opening-balances/{batch_id}/files": {
       "post": {
         "description": "Stage one CSV.  The file is stored with its SHA-256 before the rows are read.",
@@ -9528,6 +9763,75 @@
           }
         },
         "summary": "Upload File",
+        "tags": [
+          "opening-balances"
+        ]
+      }
+    },
+    "/api/v1/opening-balances/{batch_id}/profit-settings": {
+      "put": {
+        "description": "Correct how current-year profit is loaded and whether a lump accrued-profit\nfigure may be split pro rata, on a batch that has not been posted yet.",
+        "operationId": "update_profit_settings_api_v1_opening_balances__batch_id__profit_settings_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfitSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchRow"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Profit Settings",
         "tags": [
           "opening-balances"
         ]

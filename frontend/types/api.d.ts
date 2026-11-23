@@ -969,7 +969,11 @@ export interface paths {
         get: operations["get_batch_api_v1_opening_balances__batch_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Batch
+         * @description Discard a batch that has not reached the ledger.
+         */
+        delete: operations["delete_batch_api_v1_opening_balances__batch_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1009,6 +1013,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/opening-balances/{batch_id}/client": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Client
+         * @description Correct which mandate a batch not yet posted belongs to.
+         *
+         *     This drops the batch back to DRAFT -- every account the uploaded CSVs resolve
+         *     against is the client's own chart of accounts, so whatever validation already
+         *     ran no longer means anything.
+         */
+        put: operations["update_client_api_v1_opening_balances__batch_id__client_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/opening-balances/{batch_id}/cutover-date": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Cutover Date
+         * @description Correct the cutover date on a batch that has not been posted yet.
+         *
+         *     This drops the batch back to DRAFT -- every custodian row and the preview's
+         *     accrual maths was checked against the old date, so whatever validation already
+         *     ran no longer means anything.
+         */
+        put: operations["update_cutover_date_api_v1_opening_balances__batch_id__cutover_date_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/opening-balances/{batch_id}/files": {
         parameters: {
             query?: never;
@@ -1023,6 +1075,27 @@ export interface paths {
          * @description Stage one CSV.  The file is stored with its SHA-256 before the rows are read.
          */
         post: operations["upload_file_api_v1_opening_balances__batch_id__files_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/opening-balances/{batch_id}/profit-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Profit Settings
+         * @description Correct how current-year profit is loaded and whether a lump accrued-profit
+         *     figure may be split pro rata, on a batch that has not been posted yet.
+         */
+        put: operations["update_profit_settings_api_v1_opening_balances__batch_id__profit_settings_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3159,6 +3232,11 @@ export interface components {
             /** Type */
             type: string;
         };
+        /** UpdateBatchClientRequest */
+        UpdateBatchClientRequest: {
+            /** Client Id */
+            client_id: string;
+        };
         /** UpdateClientRequest */
         UpdateClientRequest: {
             /** Agreement Date */
@@ -3170,6 +3248,20 @@ export interface components {
             /** Legal Name */
             legal_name?: string | null;
             status?: components["schemas"]["RecordStatus"] | null;
+        };
+        /** UpdateCutoverDateRequest */
+        UpdateCutoverDateRequest: {
+            /**
+             * Cutover Date
+             * Format: date
+             */
+            cutover_date: string;
+        };
+        /** UpdateProfitSettingsRequest */
+        UpdateProfitSettingsRequest: {
+            /** Pro Rata Accrual Split */
+            pro_rata_accrual_split: boolean;
+            profit_treatment: components["schemas"]["ProfitTreatment"];
         };
         /** UpdateUserRequest */
         UpdateUserRequest: {
@@ -5561,6 +5653,37 @@ export interface operations {
             };
         };
     };
+    delete_batch_api_v1_opening_balances__batch_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                batch_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     acknowledge_api_v1_opening_balances__batch_id__acknowledge_warnings_post: {
         parameters: {
             query?: never;
@@ -5631,6 +5754,80 @@ export interface operations {
             };
         };
     };
+    update_client_api_v1_opening_balances__batch_id__client_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                batch_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBatchClientRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchRow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_cutover_date_api_v1_opening_balances__batch_id__cutover_date_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                batch_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCutoverDateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchRow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     upload_file_api_v1_opening_balances__batch_id__files_post: {
         parameters: {
             query?: never;
@@ -5645,6 +5842,43 @@ export interface operations {
         requestBody: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_upload_file_api_v1_opening_balances__batch_id__files_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchRow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_profit_settings_api_v1_opening_balances__batch_id__profit_settings_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                batch_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProfitSettingsRequest"];
             };
         };
         responses: {
