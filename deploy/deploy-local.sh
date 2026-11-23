@@ -31,7 +31,11 @@ fi
 COMPOSE="docker compose -f deploy/docker-compose.prod.yml --env-file $ENV_PATH -p fms"
 
 echo "== Building and starting the stack =="
-$COMPOSE up -d --build
+if ! $COMPOSE up -d --build; then
+  echo "One of the one-shot steps failed; recent logs:" >&2
+  $COMPOSE logs --tail=200 migrate seed
+  exit 1
+fi
 
 echo "== Waiting for the API to report healthy =="
 status=""
